@@ -283,6 +283,10 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
             mRtcEngine.setParameters("{\"che.audio.md.enable\": false}")
             mRtcEngine.setAudioProfile(3) // AgoraAudioProfileMusicStandardStereo
         }
+
+        if (AudioSettings.enabled) {
+            mRtcEngine.setParameters("{\"che.audio.agc.enable\": false}")
+        }
     }
 
     override fun renewToken(rtmToken: String, chorusChannelRtcToken: String) {
@@ -994,6 +998,10 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
         mRtcEngine.muteRemoteAudioStreamEx(giantChorusConfig.musicStreamUid, true, singChannelRtcConnection)
         // 加入演唱频道后，创建data stream
         renewInnerDataStreamId()
+
+        if (AudioSettings.enabled) {
+            mRtcEngine.setParameters("{\"che.audio.agc.enable\": false}")
+        }
     }
 
     private fun leaveChorus2(role: KTVSingRole) {

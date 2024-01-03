@@ -91,14 +91,14 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:checked="true"
-            android:text="MCC声网歌曲中心" />
+            android:text="遇见" />
 
         <RadioButton
             android:id="@+id/rbtLocalSong"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
-            android:text="Local本地音乐" />
+            android:text="不如跳舞" />
     </RadioGroup>
 
 

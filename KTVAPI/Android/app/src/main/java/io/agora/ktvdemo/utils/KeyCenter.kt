@@ -6,7 +6,8 @@ object KeyCenter {
     const val CoSingerUid = 2000
     const val AudienceUid = 3000
 
-    const val songCode: Long = 6625526607662280
+    const val songCode: Long = 6625526603433040
+    const val songCode2: Long = 6625526624816000
 
     var localUid: Int = LeadSingerUid
 

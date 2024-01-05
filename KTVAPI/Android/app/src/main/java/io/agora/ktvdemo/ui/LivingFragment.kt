@@ -256,6 +256,14 @@ class LivingFragment : BaseFragment<FragmentLivingBinding>() {
                 //ktvApi.muteMic(true)
                 Toast.makeText(MyApplication.app(), R.string.app_no_premission, Toast.LENGTH_SHORT).show()
             }
+
+            btPause.setOnClickListener {
+                ktvApi.pauseSing()
+            }
+
+            btPlay.setOnClickListener {
+                ktvApi.resumeSing()
+            }
         }
     }
 

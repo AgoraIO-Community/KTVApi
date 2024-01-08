@@ -26,11 +26,6 @@ class ViewController: UIViewController {
         role = .leadSinger
     }
     
-    @IBAction func coSet(_ sender: Any) {
-        role = .coSinger
-    }
-    
-    
     @IBAction func auSet(_ sender: Any) {
         role = .audience
     }

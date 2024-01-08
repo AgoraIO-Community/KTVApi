@@ -31,7 +31,7 @@ class KTVViewController: UIViewController {
     let coSingerId = 2000
     let audienceId = 3000
     
-    let mccSongCode = 6654550232746660
+    let mccSongCode = 6625526605291650
     
     var lyricView: KTVLyricView!
     
@@ -47,6 +47,9 @@ class KTVViewController: UIViewController {
 
     let muteBtn: UIButton = UIButton()
     let unmuteBtn: UIButton = UIButton()
+    
+    let musicLoadProLabel: UILabel = UILabel()
+    let roleLabel: UILabel = UILabel()
 
     private var loadMusicCallBack:((Bool, String)->Void)?
     
@@ -87,59 +90,83 @@ class KTVViewController: UIViewController {
         view.addSubview(lyricView)
         
         //加载歌曲
-        loadMusicBtn.frame = CGRect(x: 10, y: 270, width: 100, height: 40)
+        loadMusicBtn.frame = CGRect(x: 10, y: 270, width: 80, height: 40)
         loadMusicBtn.backgroundColor = .gray
         loadMusicBtn.setTitle("加载歌曲", for: .normal)
+        loadMusicBtn.titleLabel?.font = UIFont.systemFont(ofSize: 13)
         loadMusicBtn.addTarget(self, action: #selector(loadSong), for: .touchUpInside)
         view.addSubview(loadMusicBtn)
         
         //溢出歌曲
-        cancelMusicBtn.frame = CGRect(x: 150, y: 270, width: 100, height: 40)
+        cancelMusicBtn.frame = CGRect(x: 100, y: 270, width: 80, height: 40)
         cancelMusicBtn.backgroundColor = .gray
         cancelMusicBtn.setTitle("移除歌曲", for: .normal)
+        cancelMusicBtn.titleLabel?.font = UIFont.systemFont(ofSize: 13)
         cancelMusicBtn.addTarget(self, action: #selector(cancelSong), for: .touchUpInside)
         view.addSubview(cancelMusicBtn)
         
+        musicLoadProLabel.frame = CGRect(x: 200, y: 270, width: 60, height: 40)
+        musicLoadProLabel.backgroundColor = .gray
+        musicLoadProLabel.font = UIFont.systemFont(ofSize: 13)
+        musicLoadProLabel.textColor = .white
+        musicLoadProLabel.textAlignment = .center
+        view.addSubview(musicLoadProLabel)
+        musicLoadProLabel.isHidden = true
+        
         //加入合唱
-        joinChorusBtn.frame = CGRect(x: 10, y: 320, width: 100, height: 40)
+        joinChorusBtn.frame = CGRect(x: 10, y: 320, width: 80, height: 40)
         joinChorusBtn.backgroundColor = .gray
         joinChorusBtn.setTitle("加入合唱", for: .normal)
+        joinChorusBtn.titleLabel?.font = UIFont.systemFont(ofSize: 13)
         joinChorusBtn.addTarget(self, action: #selector(joinChorus), for: .touchUpInside)
         view.addSubview(joinChorusBtn)
         
         //离开合唱
-        leaveChorusBtn.frame = CGRect(x: 150, y: 320, width: 100, height: 40)
+        leaveChorusBtn.frame = CGRect(x: 100, y: 320, width: 80, height: 40)
         leaveChorusBtn.backgroundColor = .gray
         leaveChorusBtn.setTitle("离开合唱", for: .normal)
+        leaveChorusBtn.titleLabel?.font = UIFont.systemFont(ofSize: 13)
         leaveChorusBtn.addTarget(self, action: #selector(leaveChorus), for: .touchUpInside)
         view.addSubview(leaveChorusBtn)
         
+        roleLabel.frame = CGRect(x: 200, y: 320, width: 60, height: 40)
+        roleLabel.backgroundColor = .gray
+        roleLabel.textColor = .white
+        roleLabel.textAlignment = .center
+        roleLabel.font = UIFont.systemFont(ofSize: 13)
+        view.addSubview(roleLabel)
+        roleLabel.text = getRoleName(with: role)
+        
         //原唱
-        oriBtn.frame = CGRect(x: 10, y: 370, width: 100, height: 40)
+        oriBtn.frame = CGRect(x: 10, y: 370, width: 80, height: 40)
         oriBtn.backgroundColor = .gray
         oriBtn.setTitle("原唱", for: .normal)
         oriBtn.addTarget(self, action: #selector(oriSing), for: .touchUpInside)
+        oriBtn.titleLabel?.font = UIFont.systemFont(ofSize: 13)
         view.addSubview(oriBtn)
         
         //伴奏
-        accBtn.frame = CGRect(x: 150, y: 370, width: 100, height: 40)
+        accBtn.frame = CGRect(x: 100, y: 370, width: 80, height: 40)
         accBtn.backgroundColor = .gray
         accBtn.setTitle("伴奏", for: .normal)
         accBtn.addTarget(self, action: #selector(accSing), for: .touchUpInside)
+        accBtn.titleLabel?.font = UIFont.systemFont(ofSize: 13)
         view.addSubview(accBtn)
         
         //开麦
-        muteBtn.frame = CGRect(x: 10, y: 420, width: 100, height: 40)
+        muteBtn.frame = CGRect(x: 10, y: 420, width: 80, height: 40)
         muteBtn.backgroundColor = .gray
         muteBtn.setTitle("开麦", for: .normal)
         muteBtn.addTarget(self, action: #selector(mute), for: .touchUpInside)
+        muteBtn.titleLabel?.font = UIFont.systemFont(ofSize: 13)
         view.addSubview(muteBtn)
         
         //关麦
-        unmuteBtn.frame = CGRect(x: 150, y: 420, width: 100, height: 40)
+        unmuteBtn.frame = CGRect(x: 100, y: 420, width: 80, height: 40)
         unmuteBtn.backgroundColor = .gray
         unmuteBtn.setTitle("关麦", for: .normal)
         unmuteBtn.addTarget(self, action: #selector(unmute), for: .touchUpInside)
+        unmuteBtn.titleLabel?.font = UIFont.systemFont(ofSize: 13)
         view.addSubview(unmuteBtn)
 
     }
@@ -196,8 +223,21 @@ class KTVViewController: UIViewController {
     
     
     private func switchRole() {
-        ktvApi.switchSingerRole(newRole: role) { state, failReason in
-            
+        ktvApi.switchSingerRole(newRole: role) {[weak self] state, failReason in
+            guard let self = self else {return}
+            DispatchQueue.main.async {
+                self.roleLabel.text = self.getRoleName(with: self.role)
+            }
+        }
+    }
+    
+    private func getRoleName(with role: KTVSingRole) -> String {
+        if role == .leadSinger || role == .soloSinger {
+            return "主唱"
+        } else if role == .coSinger {
+            return "合唱"
+        } else {
+            return "观众"
         }
     }
     
@@ -355,12 +395,19 @@ extension KTVViewController: IMusicLoadStateListener {
     func onMusicLoadProgress(songCode: Int, percent: Int, status: AgoraMusicContentCenterPreloadStatus, msg: String?, lyricUrl: String?) {
         //歌曲加载进度
         print("歌曲加载进度:\(percent)%")
+        DispatchQueue.main.async {
+            self.musicLoadProLabel.text = "\(percent)%"
+            self.musicLoadProLabel.isHidden = false
+        }
     }
     
     func onMusicLoadSuccess(songCode: Int, lyricUrl: String) {
         if let loadMusicCallBack = self.loadMusicCallBack {
             loadMusicCallBack(true, "\(songCode)")
             self.loadMusicCallBack = nil
+        }
+        DispatchQueue.main.async {
+            self.musicLoadProLabel.isHidden = true
         }
     }
     
@@ -369,6 +416,9 @@ extension KTVViewController: IMusicLoadStateListener {
         if let loadMusicCallBack = self.loadMusicCallBack {
             loadMusicCallBack(false, "\(songCode)")
             self.loadMusicCallBack = nil
+        }
+        DispatchQueue.main.async {
+            self.musicLoadProLabel.isHidden = true
         }
     }
 }
@@ -384,6 +434,9 @@ extension KTVViewController: KTVApiEventHandlerDelegate {
     
     func onSingerRoleChanged(oldRole: KTVSingRole, newRole: KTVSingRole) {
         role = newRole
+        DispatchQueue.main.async {
+            self.roleLabel.text = self.getRoleName(with: self.role)
+        }
     }
     
     func onTokenPrivilegeWillExpire() {

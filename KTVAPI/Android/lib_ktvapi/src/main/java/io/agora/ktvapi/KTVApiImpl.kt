@@ -29,8 +29,7 @@ interface OnJoinChorusStateListener {
     fun onJoinChorusFail(reason: KTVJoinChorusFailReason)
 }
 
-class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver,
-    IRtcEngineEventHandler() {
+class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver, IRtcEngineEventHandler() {
     private val TAG: String = "KTV_API_LOG"
     var debugMode = false
 
@@ -48,8 +47,11 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
     private lateinit var mPlayer: IMediaPlayer
 
     private lateinit var ktvApiConfig: KTVApiConfig
+    private lateinit var giantChorusConfig: GiantChorusConfiguration
     private var innerDataStreamId: Int = 0
+    private var singChannelRtcConnection: RtcConnection? = null
     private var subChorusConnection: RtcConnection? = null
+    private var mpkConnection: RtcConnection? = null
 
     private var mainSingerUid: Int = 0
     private var songCode: Long = 0
@@ -105,24 +107,29 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
     private var professionalModeOpen = false
     private var audioRouting = 0
     private var isPublishAudio = false // 通过是否发音频流判断
+    // 演唱分数
+    private var singingScore = 0
 
     // 数据上报
     private fun reportCallScenarioApi(event: String, params: JSONObject) {
         mRtcEngine.sendCustomReportMessage(
             "scenarioAPI",
-            "1_android_3.3.0",
+            "1_android_3.8.0",
             event,
             params.toString(),
             0)
     }
 
-    override fun initialize(
-        config: KTVApiConfig
-    ) {
+    override fun initialize(config: KTVApiConfig, giantChorusConfig: GiantChorusConfiguration?) {
         this.mRtcEngine = config.engine as RtcEngineEx
-
         reportCallScenarioApi("initialize", JSONObject().put("config", config))
+
         this.ktvApiConfig = config
+        this.singChannelRtcConnection = RtcConnection(ktvApiConfig.chorusChannelName, ktvApiConfig.localUid)
+
+        if (ktvApiConfig.type == KTVType.Cantata) {
+            this.giantChorusConfig = giantChorusConfig ?: return
+        }
 
         // ------------------ 初始化内容中心 ------------------
         if (config.musicType == KTVMusicType.SONG_CODE) {
@@ -147,16 +154,13 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
         mPlayer.adjustPlayoutVolume(mpkPlayoutVolume)
 
         // 注册回调
-        mRtcEngine.addHandler(this)
         mPlayer.registerPlayerObserver(this)
-
-        renewInnerDataStreamId()
         setKTVParameters()
         startDisplayLrc()
-        startSyncPitch()
+        //startSyncPitch()
+        startSyncScore()
+        startSyncCloudConvergenceStatus()
         isRelease = false
-
-        mPlayer.setPlayerOption("play_pos_change_callback", 100)
     }
 
     override fun renewInnerDataStreamId() {
@@ -165,7 +169,7 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
         val innerCfg = DataStreamConfig()
         innerCfg.syncWithAudio = true
         innerCfg.ordered = false
-        this.innerDataStreamId = mRtcEngine.createDataStream(innerCfg)
+        this.innerDataStreamId = mRtcEngine.createDataStreamEx(innerCfg, singChannelRtcConnection)
     }
 
     private fun setKTVParameters() {
@@ -194,8 +198,8 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
         // Android Only
         mRtcEngine.setParameters("{\"che.audio.enable_estimated_device_delay\":false}")
 
+        // TopN
         mRtcEngine.setParameters("{\"rtc.use_audio4\": true}")
-        mRtcEngine.setParameters("{\"rtc.max_audio_metadata_length\": 200}")
     }
 
     override fun addEventHandler(ktvApiEventHandler: IKTVApiEventHandler) {
@@ -214,11 +218,14 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
         isRelease = true
         singerRole = KTVSingRole.Audience
 
+        stopSyncCloudConvergenceStatus()
+        stopSyncScore()
         stopSyncPitch()
         stopDisplayLrc()
         this.mLastReceivedPlayPosTime = null
         this.mReceivedPlayPosition = 0
         this.innerDataStreamId = 0
+        this.singingScore = 0
 
         lyricCallbackMap.clear()
         loadMusicCallbackMap.clear()
@@ -226,7 +233,6 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
         musicCollectionCallbackMap.clear()
         lrcView = null
 
-        mRtcEngine.removeHandler(this)
         mPlayer.unRegisterPlayerObserver(this)
 
         if (ktvApiConfig.musicType == KTVMusicType.SONG_CODE) {
@@ -394,6 +400,77 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
             stopSing()
 
             this.singerRole = newRole
+            ktvApiEventHandlerList.forEach { it.onSingerRoleChanged(oldRole, newRole) }
+            switchRoleStateListener?.onSwitchRoleSuccess()
+        } else {
+            switchRoleStateListener?.onSwitchRoleFail(SwitchRoleFailReason.NO_PERMISSION)
+            Log.e(TAG, "Error！You can not switch role from $singerRole to $newRole!")
+        }
+    }
+
+    override fun switchSingerRole2(
+        newRole: KTVSingRole,
+        switchRoleStateListener: ISwitchRoleStateListener?
+    ) {
+        reportCallScenarioApi("switchSingerRole", JSONObject().put("newRole", newRole))
+        if (this.ktvApiConfig.type != KTVType.Cantata) {
+            Log.e(TAG, "You can't call this api while not in cantata mode")
+            return
+        }
+        Log.d(TAG, "switchSingerRole oldRole: $singerRole, newRole: $newRole")
+        val oldRole = singerRole
+        if (this.singerRole == KTVSingRole.Audience && newRole == KTVSingRole.LeadSinger) {
+            // 1、Audience -》LeadSinger
+            // 离开观众频道
+            mRtcEngine.leaveChannelEx(RtcConnection(ktvApiConfig.channelName, ktvApiConfig.localUid))
+            joinChorus(newRole)
+            singerRole = newRole
+            ktvApiEventHandlerList.forEach { it.onSingerRoleChanged(oldRole, newRole) }
+            switchRoleStateListener?.onSwitchRoleSuccess()
+        } else if (this.singerRole == KTVSingRole.Audience && newRole == KTVSingRole.CoSinger) {
+            // 2、Audience -》CoSinger
+            // 离开观众频道
+            mRtcEngine.leaveChannelEx(RtcConnection(ktvApiConfig.channelName, ktvApiConfig.localUid))
+            joinChorus(newRole)
+            singerRole = newRole
+            switchRoleStateListener?.onSwitchRoleSuccess()
+            ktvApiEventHandlerList.forEach { it.onSingerRoleChanged(oldRole, newRole) }
+        } else if (this.singerRole == KTVSingRole.CoSinger && newRole == KTVSingRole.Audience) {
+            // 3、CoSinger -》Audience
+            leaveChorus2(singerRole)
+            // 加入观众频道
+            mRtcEngine.joinChannelEx(giantChorusConfig.audienceChannelToken, RtcConnection(ktvApiConfig.channelName, ktvApiConfig.localUid), ChannelMediaOptions(), object : IRtcEngineEventHandler() {
+                override fun onJoinChannelSuccess(channel: String?, uid: Int, elapsed: Int) {
+                    super.onJoinChannelSuccess(channel, uid, elapsed)
+                }
+
+                override fun onStreamMessage(uid: Int, streamId: Int, data: ByteArray?) {
+                    super.onStreamMessage(uid, streamId, data)
+                    dealWithStreamMessage(uid, streamId, data)
+                }
+            })
+
+            singerRole = newRole
+            ktvApiEventHandlerList.forEach { it.onSingerRoleChanged(oldRole, newRole) }
+            switchRoleStateListener?.onSwitchRoleSuccess()
+        } else if (this.singerRole == KTVSingRole.LeadSinger && newRole == KTVSingRole.Audience) {
+            // 4、LeadSinger -》Audience
+            stopSing()
+            leaveChorus2(singerRole)
+
+            // 加入观众频道
+            mRtcEngine.joinChannelEx(giantChorusConfig.audienceChannelToken, RtcConnection(ktvApiConfig.channelName, ktvApiConfig.localUid), ChannelMediaOptions(), object : IRtcEngineEventHandler() {
+                override fun onJoinChannelSuccess(channel: String?, uid: Int, elapsed: Int) {
+                    super.onJoinChannelSuccess(channel, uid, elapsed)
+                }
+
+                override fun onStreamMessage(uid: Int, streamId: Int, data: ByteArray?) {
+                    super.onStreamMessage(uid, streamId, data)
+                    dealWithStreamMessage(uid, streamId, data)
+                }
+            })
+
+            singerRole = newRole
             ktvApiEventHandlerList.forEach { it.onSingerRoleChanged(oldRole, newRole) }
             switchRoleStateListener?.onSwitchRoleSuccess()
         } else {
@@ -577,11 +654,6 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
         }
     }
 
-    override fun removeMusic(songCode: Long) {
-        reportCallScenarioApi("removeMusic", JSONObject().put("songCode", songCode))
-        mMusicCenter.removeCache(songCode)
-    }
-
     override fun switchPlaySrc(url: String, syncPts: Boolean) {
         Log.d(TAG, "switchPlaySrc called: $url")
         if (this.songUrl != url && this.songUrl2 != url) {
@@ -656,6 +728,14 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
         this.audioPlayoutDelay = audioPlayoutDelay
     }
 
+    override fun setSingingScore(score: Int) {
+        this.singingScore = score
+    }
+
+    override fun setAudienceStreamMessage(uid: Int, streamId: Int, data: ByteArray?) {
+        dealWithStreamMessage(uid, streamId, data)
+    }
+
     override fun getMediaPlayer(): IMediaPlayer {
         return mPlayer
     }
@@ -677,7 +757,7 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
         channelMediaOption.autoSubscribeAudio = true
         channelMediaOption.publishMediaPlayerId = mPlayer.mediaPlayerId
         channelMediaOption.publishMediaPlayerAudioTrack = true
-        mRtcEngine.updateChannelMediaOptions(channelMediaOption)
+        mRtcEngine.updateChannelMediaOptionsEx(channelMediaOption, singChannelRtcConnection)
     }
 
     private fun joinChorus(newRole: KTVSingRole, token: String, onJoinChorusStateListener: OnJoinChorusStateListener) {
@@ -696,7 +776,7 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
                 val channelMediaOption = ChannelMediaOptions()
                 channelMediaOption.autoSubscribeAudio = true
                 channelMediaOption.publishMediaPlayerAudioTrack = false
-                mRtcEngine.updateChannelMediaOptions(channelMediaOption)
+                mRtcEngine.updateChannelMediaOptionsEx(channelMediaOption, singChannelRtcConnection)
 
                 // 预加载歌曲成功
                 // 导唱
@@ -734,10 +814,12 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
             KTVSingRole.CoSinger -> {
                 mPlayer.stop()
                 val channelMediaOption = ChannelMediaOptions()
+                channelMediaOption.autoSubscribeAudio = true
                 channelMediaOption.publishMediaPlayerAudioTrack = false
-                mRtcEngine.updateChannelMediaOptions(channelMediaOption)
+                mRtcEngine.updateChannelMediaOptionsEx(channelMediaOption, singChannelRtcConnection)
                 leaveChorus2ndChannel(role)
 
+                // 更新音频配置
                 mRtcEngine.setAudioScenario(AUDIO_SCENARIO_GAME_STREAMING)
                 mRtcEngine.setParameters("{\"rtc.video.enable_sync_render_ntp_broadcast\":true}")
                 mRtcEngine.setParameters("{\"che.audio.neteq.enable_stable_playout\":true}")
@@ -753,15 +835,186 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
         Log.d(TAG, "stopSong called")
 
         val channelMediaOption = ChannelMediaOptions()
+        channelMediaOption.autoSubscribeAudio = true
         channelMediaOption.publishMediaPlayerAudioTrack = false
-        mRtcEngine.updateChannelMediaOptions(channelMediaOption)
+        mRtcEngine.updateChannelMediaOptionsEx(channelMediaOption, singChannelRtcConnection)
 
         mPlayer.stop()
 
+        // 更新音频配置
         mRtcEngine.setAudioScenario(AUDIO_SCENARIO_GAME_STREAMING)
         mRtcEngine.setParameters("{\"rtc.video.enable_sync_render_ntp_broadcast\":true}")
         mRtcEngine.setParameters("{\"che.audio.neteq.enable_stable_playout\":true}")
         mRtcEngine.setParameters("{\"che.audio.custom_bitrate\": 48000}")
+    }
+
+    private fun joinChorus(newRole: KTVSingRole) {
+        Log.d(TAG, "joinChorus: $newRole")
+        val singChannelMediaOptions = ChannelMediaOptions()
+        singChannelMediaOptions.autoSubscribeAudio = true
+        singChannelMediaOptions.publishMicrophoneTrack = true
+        singChannelMediaOptions.clientRoleType = CLIENT_ROLE_BROADCASTER
+        singChannelMediaOptions.parameters = "{\"che.audio.max_mixed_participants\": 8}"
+        if (newRole == KTVSingRole.LeadSinger) {
+            // 主唱不参加TopN
+            singChannelMediaOptions.isAudioFilterable = false
+            mRtcEngine.setParameters("{\"che.audio.filter_streams\":${giantChorusConfig.topN}}")
+        } else {
+            mRtcEngine.setParameters("{\"che.audio.filter_streams\":${giantChorusConfig.topN - 1}}")
+        }
+        // 加入演唱频道
+        mRtcEngine.joinChannelEx(ktvApiConfig.chorusChannelToken, singChannelRtcConnection, singChannelMediaOptions, object :
+            IRtcEngineEventHandler() {
+            override fun onJoinChannelSuccess(channel: String?, uid: Int, elapsed: Int) {
+                super.onJoinChannelSuccess(channel, uid, elapsed)
+                Log.d(TAG, "singChannel onJoinChannelSuccess: $newRole")
+            }
+
+            override fun onStreamMessage(uid: Int, streamId: Int, data: ByteArray?) {
+                super.onStreamMessage(uid, streamId, data)
+                dealWithStreamMessage(uid, streamId, data)
+            }
+
+            override fun onAudioVolumeIndication(speakers: Array<out AudioVolumeInfo>?, totalVolume: Int) {
+                val allSpeakers = speakers ?: return
+                // VideoPitch 回调, 用于同步各端音准
+                if (singerRole != KTVSingRole.Audience) {
+                    for (info in allSpeakers) {
+                        if (info.uid == 0) {
+                            pitch =
+                                if (mediaPlayerState == MediaPlayerState.PLAYER_STATE_PLAYING && isOnMicOpen) {
+                                    info.voicePitch
+                                } else {
+                                    0.0
+                                }
+                        }
+                    }
+                }
+            }
+
+            // 用于合唱校准
+            override fun onLocalAudioStats(stats: LocalAudioStats?) {
+                if (useCustomAudioSource) return
+                val audioState = stats ?: return
+                audioPlayoutDelay = audioState.audioPlayoutDelay
+            }
+
+            // 用于检测耳机状态
+            override fun onAudioRouteChanged(routing: Int) { // 0\2\5 earPhone
+                audioRouting = routing
+                processAudioProfessionalProfile()
+            }
+
+            // 用于检测收发流状态
+            override fun onAudioPublishStateChanged(
+                channel: String?,
+                oldState: Int,
+                newState: Int,
+                elapseSinceLastState: Int
+            ) {
+                Log.d(TAG, "onAudioPublishStateChanged: oldState: $oldState, newState: $newState")
+                if (newState == 3) {
+                    isPublishAudio = true
+                    processAudioProfessionalProfile()
+                } else if (newState == 1) {
+                    isPublishAudio = false
+                }
+            }
+        })
+        mRtcEngine.setParameters("{\"rtc.use_audio4\": true}")
+        mRtcEngine.enableAudioVolumeIndicationEx(50, 10, true, singChannelRtcConnection)
+
+        when (newRole) {
+            KTVSingRole.LeadSinger -> {
+                // 更新音频配置
+                mRtcEngine.setAudioScenario(AUDIO_SCENARIO_CHORUS)
+                mRtcEngine.setParameters("{\"rtc.video.enable_sync_render_ntp_broadcast\":false}")
+                mRtcEngine.setParameters("{\"che.audio.neteq.enable_stable_playout\":false}")
+                mRtcEngine.setParameters("{\"che.audio.custom_bitrate\": 80000}")
+
+                // mpk流加入频道
+                val options = ChannelMediaOptions()
+                options.autoSubscribeAudio = false
+                options.autoSubscribeVideo = false
+                options.publishMicrophoneTrack = false
+                options.publishMediaPlayerAudioTrack = true
+                options.publishMediaPlayerId = mPlayer.mediaPlayerId
+                options.clientRoleType = CLIENT_ROLE_BROADCASTER
+                // 防止主唱和合唱听见mpk流的声音
+                options.enableAudioRecordingOrPlayout = false
+
+                val rtcConnection = RtcConnection()
+                rtcConnection.channelId = ktvApiConfig.chorusChannelName
+                rtcConnection.localUid = giantChorusConfig.musicStreamUid
+                mpkConnection = rtcConnection
+
+                mRtcEngine.joinChannelEx(
+                    giantChorusConfig.musicChannelToken,
+                    mpkConnection,
+                    options,
+                    object : IRtcEngineEventHandler() {
+                        override fun onJoinChannelSuccess(channel: String, uid: Int, elapsed: Int) {
+                            Log.d(TAG, "onMPKJoinChannelSuccess, channel: $channel, uid: $uid")
+                        }
+
+                        override fun onLeaveChannel(stats: RtcStats) {
+                            Log.d(TAG, "onMPKLeaveChannel")
+                        }
+                    })
+            }
+            KTVSingRole.CoSinger -> {
+                // 防止主唱和合唱听见mpk流的声音
+                mRtcEngine.muteRemoteAudioStreamEx(
+                    giantChorusConfig.musicStreamUid,
+                    true,
+                    singChannelRtcConnection
+                )
+
+                // 更新音频配置
+                mRtcEngine.setAudioScenario(AUDIO_SCENARIO_CHORUS)
+                mRtcEngine.setParameters("{\"rtc.video.enable_sync_render_ntp_broadcast\":false}")
+                mRtcEngine.setParameters("{\"che.audio.neteq.enable_stable_playout\":false}")
+                mRtcEngine.setParameters("{\"che.audio.custom_bitrate\": 48000}")
+
+                // 预加载歌曲成功
+                // 导唱
+                mPlayer.setPlayerOption("enable_multi_audio_track", 1)
+                if (ktvApiConfig.musicType == KTVMusicType.SONG_CODE) {
+                    (mPlayer as IAgoraMusicPlayer).open(songCode, 0) // TODO open failed
+                } else {
+                    mPlayer.open(songUrl, 0) // TODO open failed
+                }
+            }
+            else -> {
+                Log.e(TAG, "JoinChorus with Wrong role: $singerRole")
+            }
+        }
+
+        mRtcEngine.muteRemoteAudioStreamEx(giantChorusConfig.musicStreamUid, true, singChannelRtcConnection)
+        // 加入演唱频道后，创建data stream
+        renewInnerDataStreamId()
+    }
+
+    private fun leaveChorus2(role: KTVSingRole) {
+        Log.d(TAG, "leaveChorus: $singerRole")
+        when (role) {
+            KTVSingRole.LeadSinger -> {
+                mRtcEngine.leaveChannelEx(mpkConnection)
+            }
+            KTVSingRole.CoSinger -> {
+                mPlayer.stop()
+
+                // 更新音频配置
+                mRtcEngine.setAudioScenario(AUDIO_SCENARIO_GAME_STREAMING)
+                mRtcEngine.setParameters("{\"rtc.video.enable_sync_render_ntp_broadcast\":true}")
+                mRtcEngine.setParameters("{\"che.audio.neteq.enable_stable_playout\":true}")
+                mRtcEngine.setParameters("{\"che.audio.custom_bitrate\": 48000}")
+            }
+            else -> {
+                Log.e(TAG, "JoinChorus with wrong role: $singerRole")
+            }
+        }
+        mRtcEngine.leaveChannelEx(singChannelRtcConnection)
     }
 
     // ------------------ inner --------------------
@@ -774,11 +1027,11 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
         obj: JSONObject,
         success: (isSendSuccess: Boolean) -> Unit
     ) {
-        val ret = mRtcEngine.sendStreamMessage(innerDataStreamId, obj.toString().toByteArray())
+        val ret = mRtcEngine.sendStreamMessageEx(innerDataStreamId, obj.toString().toByteArray(), singChannelRtcConnection)
         if (ret == 0) {
             success.invoke(true)
         } else {
-            Log.e(TAG, "sendStreamMessageWithJsonObject failed: $ret")
+            Log.e(TAG, "sendStreamMessageWithJsonObject failed: $ret, innerDataStreamId:$innerDataStreamId")
         }
     }
 
@@ -803,7 +1056,6 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
     }
 
     // 合唱
-    private var handlerEx :IRtcEngineEventHandler? = null
     private fun joinChorus2ndChannel(
         newRole: KTVSingRole,
         token: String,
@@ -817,10 +1069,10 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
         }
 
         if (newRole == KTVSingRole.CoSinger) {
-            mRtcEngine.setAudioScenario(AUDIO_SCENARIO_CHORUS)
             mRtcEngine.setParameters("{\"rtc.video.enable_sync_render_ntp_broadcast\":false}")
             mRtcEngine.setParameters("{\"che.audio.neteq.enable_stable_playout\":false}")
             mRtcEngine.setParameters("{\"che.audio.custom_bitrate\": 48000}")
+            mRtcEngine.setAudioScenario(AUDIO_SCENARIO_CHORUS)
         }
 
         // main singer do not subscribe 2nd channel
@@ -833,7 +1085,6 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
         channelMediaOption.enableAudioRecordingOrPlayout =
             newRole != KTVSingRole.LeadSinger
         channelMediaOption.clientRoleType = CLIENT_ROLE_BROADCASTER
-        channelMediaOption.parameters = "{\"rtc.use_audio4\": true}"
 
         val rtcConnection = RtcConnection()
         rtcConnection.channelId = ktvApiConfig.chorusChannelName
@@ -844,10 +1095,7 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
             token,
             rtcConnection,
             channelMediaOption,
-            null)
-        mRtcEngine.setParameters("{\"rtc.use_audio4\": true}")
-
-        val handler = object : IRtcEngineEventHandler() {
+            object : IRtcEngineEventHandler() {
                 override fun onJoinChannelSuccess(channel: String?, uid: Int, elapsed: Int) {
                     Log.d(TAG, "onJoinChannel2Success: channel:$channel, uid:$uid")
                     if (isRelease) return
@@ -891,69 +1139,38 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
                     super.onAudioVolumeIndication(speakers, totalVolume)
                     ktvApiEventHandlerList.forEach { it.onChorusChannelAudioVolumeIndication(speakers, totalVolume) }
                 }
-
-                override fun onAudioMetadataReceived(uid: Int, data: ByteArray?) {
-                    super.onAudioMetadataReceived(uid, data)
-                    dealWithStreamMessage(data)
-                }
             }
-        handlerEx = handler
-        mRtcEngine.addHandlerEx(handler, rtcConnection)
+        )
 
         if (ret != 0) {
             Log.e(TAG, "joinChorus2ndChannel failed: $ret")
         }
 
         if (newRole == KTVSingRole.CoSinger) {
-            mRtcEngine.muteRemoteAudioStream(mainSingerUid, true)
+            mRtcEngine.muteRemoteAudioStreamEx(mainSingerUid, true, singChannelRtcConnection)
             Log.d(TAG, "muteRemoteAudioStream$mainSingerUid")
         }
     }
 
     private fun leaveChorus2ndChannel(role: KTVSingRole) {
-        mRtcEngine.removeHandlerEx(handlerEx, subChorusConnection)
         if (role == KTVSingRole.LeadSinger) {
             mRtcEngine.leaveChannelEx(subChorusConnection)
         } else if (role == KTVSingRole.CoSinger) {
             mRtcEngine.leaveChannelEx(subChorusConnection)
-            mRtcEngine.muteRemoteAudioStream(mainSingerUid, false)
+            mRtcEngine.muteRemoteAudioStreamEx(mainSingerUid, false, singChannelRtcConnection)
         }
     }
 
     // ------------------ 歌词播放、同步 ------------------
     // 开始播放歌词
-    fun stringHashToInt32(str: String): Int {
-        val hashCode = str.hashCode()
-        val value = hashCode and 0xFFFFFFFF.toInt()
-        return value
-    }
-
     private val displayLrcTask = object : Runnable {
         override fun run() {
-            if (!mStopDisplayLrc && singerRole != KTVSingRole.Audience){
+            if (!mStopDisplayLrc){
                 val lastReceivedTime = mLastReceivedPlayPosTime ?: return
                 val curTime = System.currentTimeMillis()
                 val offset = curTime - lastReceivedTime
-                if (offset <= 100) {
+                if (offset <= 1000) {
                     val curTs = mReceivedPlayPosition + offset + highStartTime
-                    if (singerRole == KTVSingRole.LeadSinger || singerRole == KTVSingRole.SoloSinger) {
-                        val lrcTime = LrcTimeOuterClass.LrcTime.newBuilder()
-                            .setTypeValue(LrcTimeOuterClass.MsgType.LRC_TIME.number)
-                            .setForward(true)
-                            .setSongId(songIdentifier)
-                            .setTs(curTs)
-                            .setUid(ktvApiConfig.localUid)
-                            .build()
-
-//                        val msg: MutableMap<String?, Any?> = HashMap()
-//                        msg["cmd"] = "setLrcTime"
-//                        msg["ts"] = curTs
-//                        msg["songId"] = stringHashToInt32(songIdentifier)
-//                        msg["forward"] = true
-//                        val jsonMsg = JSONObject(msg)
-                        val re = mRtcEngine.sendAudioMetadata(lrcTime.toByteArray())
-                        Log.d(TAG, "sendAudioMetadata, $lrcTime, length: ${lrcTime.toByteArray().size} ret: $re")
-                    }
                     runOnMainThread {
                         lrcView?.onUpdatePitch(pitch.toFloat())
                         // (fix ENT-489)Make lyrics delay for 200ms
@@ -1010,7 +1227,7 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
     private var mSyncPitchFuture :ScheduledFuture<*>? = null
     private fun startSyncPitch() {
         mStopSyncPitch = false
-        mSyncPitchFuture = scheduledThreadPool.scheduleAtFixedRate(mSyncPitchTask,0,50,TimeUnit.MILLISECONDS)
+        mSyncPitchFuture = scheduledThreadPool.scheduleAtFixedRate(mSyncPitchTask, 0, 50, TimeUnit.MILLISECONDS)
     }
 
     // 停止同步音高
@@ -1022,6 +1239,107 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
         mSyncPitchFuture = null
         if (scheduledThreadPool is ScheduledThreadPoolExecutor) {
             scheduledThreadPool.remove(mSyncPitchTask)
+        }
+    }
+
+    // ------------------ 评分驱动混音同步 ------------------
+    private var mStopSyncScore = true
+
+    private val mSyncScoreTask = Runnable {
+        if (!mStopSyncScore) {
+            if (ktvApiConfig.type == KTVType.Cantata &&
+                mediaPlayerState == MediaPlayerState.PLAYER_STATE_PLAYING &&
+                (singerRole == KTVSingRole.LeadSinger || singerRole == KTVSingRole.CoSinger)) {
+                sendSyncScore()
+            }
+        }
+    }
+
+    private fun sendSyncScore() {
+        val jsonObject = JSONObject()
+        jsonObject.put("service", "audio_smart_mixer") // data message的目标消费者（服务）名
+        jsonObject.put("version", "V1") //协议版本号（而非服务版本号）
+        val payloadJson = JSONObject()
+        payloadJson.put("cname", ktvApiConfig.chorusChannelName) // 频道名，演唱频道
+        payloadJson.put("uid", ktvApiConfig.localUid.toString()) // 自己的uid
+        payloadJson.put("uLv", -1) //user-leve1（用户级别，若无则为 -1，Level 越高，越重要）
+        payloadJson.put("specialLabel", 0) //0: default-mode ，1：这个用户需要被排除出智能混音
+        payloadJson.put("audioRoute", audioRouting) //音频路由：监听 onAudioRouteChanged
+        payloadJson.put("vocalScore", singingScore) //单句打分
+        jsonObject.put("payload", payloadJson)
+        Log.d(TAG, "sendSyncScore: $jsonObject")
+        sendStreamMessageWithJsonObject(jsonObject) {}
+    }
+
+    // 开始发送分数 3s/次
+    private var mSyncScoreFuture :ScheduledFuture<*>? = null
+    private fun startSyncScore() {
+        mStopSyncScore = false
+        mSyncScoreFuture = scheduledThreadPool.scheduleAtFixedRate(mSyncScoreTask, 0, 3000, TimeUnit.MILLISECONDS)
+    }
+
+    // 停止发送分数
+    private fun stopSyncScore() {
+        mStopSyncScore = true
+        singingScore = 0
+
+        mSyncScoreFuture?.cancel(true)
+        mSyncScoreFuture = null
+        if (scheduledThreadPool is ScheduledThreadPoolExecutor) {
+            scheduledThreadPool.remove(mSyncScoreTask)
+        }
+    }
+
+    // ------------------ 云端合流信息同步 ------------------
+    private var mStopSyncCloudConvergenceStatus = true
+
+    private val mSyncCloudConvergenceStatusTask = Runnable {
+        if (!mStopSyncCloudConvergenceStatus && ktvApiConfig.type == KTVType.Cantata && singerRole == KTVSingRole.LeadSinger) {
+            sendSyncCloudConvergenceStatus()
+        }
+    }
+
+    private fun sendSyncCloudConvergenceStatus() {
+        val jsonObject = JSONObject()
+        jsonObject.put("service", "audio_smart_mixer_status") // data message的目标消费者（服务）名
+        jsonObject.put("version", "V1") //协议版本号（而非服务版本号）
+        val payloadJson = JSONObject()
+        payloadJson.put("Ts", getNtpTimeInMs()) // NTP 时间
+        payloadJson.put("cname", ktvApiConfig.chorusChannelName) // 频道名
+        payloadJson.put("status", getCloudConvergenceStatus()) //（-1： unknown，0：非K歌状态，1：K歌播放状态，2：K歌暂停状态）
+        payloadJson.put("bgmUID", mpkConnection?.localUid.toString()) // mpk流的uid
+        payloadJson.put("leadsingerUID", mainSingerUid.toString()) //（"-1" = unknown） //主唱Uid
+        jsonObject.put("payload", payloadJson)
+        Log.d(TAG, "sendSyncCloudConvergenceStatus: $jsonObject")
+        sendStreamMessageWithJsonObject(jsonObject) {}
+    }
+
+    // -1： unknown，0：非K歌状态，1：K歌播放状态，2：K歌暂停状态）
+    private fun getCloudConvergenceStatus(): Int {
+        var status = -1
+        when (this.mediaPlayerState) {
+            MediaPlayerState.PLAYER_STATE_PLAYING -> status = 1
+            MediaPlayerState.PLAYER_STATE_PAUSED -> status = 2
+            else -> {}
+        }
+        return status
+    }
+
+    // 开始发送分数 200ms/次
+    private var mSyncCloudConvergenceStatusFuture :ScheduledFuture<*>? = null
+    private fun startSyncCloudConvergenceStatus() {
+        mStopSyncCloudConvergenceStatus = false
+        mSyncCloudConvergenceStatusFuture = scheduledThreadPool.scheduleAtFixedRate(mSyncCloudConvergenceStatusTask, 0, 200,TimeUnit.MILLISECONDS)
+    }
+
+    // 停止发送分数
+    private fun stopSyncCloudConvergenceStatus() {
+        mStopSyncCloudConvergenceStatus = true
+
+        mSyncCloudConvergenceStatusFuture?.cancel(true)
+        mSyncCloudConvergenceStatusFuture = null
+        if (scheduledThreadPool is ScheduledThreadPoolExecutor) {
+            scheduledThreadPool.remove(mSyncCloudConvergenceStatusTask)
         }
     }
 
@@ -1078,61 +1396,13 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
     }
 
     // ------------------------ AgoraRtcEvent ------------------------
-    override fun onStreamMessage(uid: Int, streamId: Int, data: ByteArray?) {
-        super.onStreamMessage(uid, streamId, data)
-        dealWithStreamMessage(data)
-    }
-
-    override fun onAudioMetadataReceived(uid: Int, data: ByteArray?) {
-        super.onAudioMetadataReceived(uid, data)
-        val jsonMsg: JSONObject
-        val messageData = data ?: return
-        try {
-
-            val lrcTime = LrcTimeOuterClass.LrcTime.parseFrom(data)
-            if (lrcTime.type == LrcTimeOuterClass.MsgType.LRC_TIME) { //同步歌词
-                val realPosition = lrcTime.ts
-                val songId = lrcTime.songId
-                //val curTs = if (this.songIdentifier == songId) realPosition else 0
-                Log.d("setLrcTimeForAudience", "curTs: $realPosition")
-                runOnMainThread {
-                    lrcView?.onUpdatePitch(pitch.toFloat())
-                    // (fix ENT-489)Make lyrics delay for 200ms
-                    // Per suggestion from Bob, it has a intrinsic buffer/delay between sound and `onPositionChanged(Player)`,
-                    // such as AEC/Player/Device buffer.
-                    // We choose the estimated 200ms.
-                    lrcView?.onUpdateProgress(if (realPosition > 200) (realPosition - 200) else realPosition) // The delay here will impact both singer and audience side
-                }
-            }
-
-
-            val strMsg = String(messageData)
-            jsonMsg = JSONObject(strMsg)
-            if (jsonMsg.getString("cmd") == "setLrcTime") { //同步歌词
-                val realPosition = jsonMsg.getLong("ts")
-                val songId = jsonMsg.getString("songId")
-                val curTs = if (this.songIdentifier == songId) realPosition else 0
-                Log.d("setLrcTimeForAudience", "curTs: $curTs")
-                runOnMainThread {
-                    lrcView?.onUpdatePitch(pitch.toFloat())
-                    // (fix ENT-489)Make lyrics delay for 200ms
-                    // Per suggestion from Bob, it has a intrinsic buffer/delay between sound and `onPositionChanged(Player)`,
-                    // such as AEC/Player/Device buffer.
-                    // We choose the estimated 200ms.
-                    lrcView?.onUpdateProgress(if (curTs > 200) (curTs - 200) else curTs) // The delay here will impact both singer and audience side
-                }
-            }
-        } catch (exp: JSONException) {
-            Log.e(TAG, "onStreamMessage:$exp")
-        }
-    }
-
-    private fun dealWithStreamMessage(data: ByteArray?) {
+    private fun dealWithStreamMessage(uid: Int, streamId: Int, data: ByteArray?) {
         val jsonMsg: JSONObject
         val messageData = data ?: return
         try {
             val strMsg = String(messageData)
             jsonMsg = JSONObject(strMsg)
+            if (!jsonMsg.has("cmd")) return
             if (jsonMsg.getString("cmd") == "setLrcTime") { //同步歌词
                 val position = jsonMsg.getLong("time")
                 val realPosition = jsonMsg.getLong("realTime")
@@ -1228,56 +1498,6 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
             }
         } catch (exp: JSONException) {
             Log.e(TAG, "onStreamMessage:$exp")
-        }
-    }
-
-    override fun onAudioVolumeIndication(speakers: Array<out AudioVolumeInfo>?, totalVolume: Int) {
-        super.onAudioVolumeIndication(speakers, totalVolume)
-        val allSpeakers = speakers ?: return
-        // VideoPitch 回调, 用于同步各端音准
-        if (this.singerRole != KTVSingRole.Audience) {
-            for (info in allSpeakers) {
-                if (info.uid == 0) {
-                    pitch =
-                        if (this.mediaPlayerState == MediaPlayerState.PLAYER_STATE_PLAYING && isOnMicOpen) {
-                            info.voicePitch
-                        } else {
-                            0.0
-                        }
-                }
-            }
-        }
-    }
-
-    // 用于合唱校准
-    override fun onLocalAudioStats(stats: LocalAudioStats?) {
-        super.onLocalAudioStats(stats)
-        if (useCustomAudioSource) return
-        val audioState = stats ?: return
-        audioPlayoutDelay = audioState.audioPlayoutDelay
-    }
-
-    // 用于检测耳机状态
-    override fun onAudioRouteChanged(routing: Int) { // 0\2\5 earPhone
-        super.onAudioRouteChanged(routing)
-        this.audioRouting = routing
-        processAudioProfessionalProfile()
-    }
-
-    // 用于检测收发流状态
-    override fun onAudioPublishStateChanged(
-        channel: String?,
-        oldState: Int,
-        newState: Int,
-        elapseSinceLastState: Int
-    ) {
-        super.onAudioPublishStateChanged(channel, oldState, newState, elapseSinceLastState)
-        Log.d(TAG, "onAudioPublishStateChanged: oldState: $oldState, newState: $newState")
-        if (newState == 3) {
-            this.isPublishAudio = true
-            processAudioProfessionalProfile()
-        } else if (newState == 1) {
-            this.isPublishAudio = false
         }
     }
 
@@ -1426,16 +1646,9 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
             msg["playerState"] = MediaPlayerState.getValue(this.mediaPlayerState)
             msg["pitch"] = pitch
             msg["songIdentifier"] = songIdentifier
+            msg["forward"] = true
             val jsonMsg = JSONObject(msg)
-            //sendStreamMessageWithJsonObject(jsonMsg) {}
-
-//            if (mainSingerHasJoinChannelEx) {
-//                val ret = mRtcEngine.sendAudioMetadataEx(jsonMsg.toString().toByteArray(), subChorusConnection)
-//                Log.d(TAG, "sendAudioMetadataEx $ret")
-//            }
-//
-//            val re = mRtcEngine.sendAudioMetadata(jsonMsg.toString().toByteArray())
-//            Log.d(TAG, "sendAudioMetadata $re")
+            sendStreamMessageWithJsonObject(jsonMsg) {}
         }
 
         if (this.singerRole != KTVSingRole.Audience) {

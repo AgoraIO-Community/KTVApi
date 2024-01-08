@@ -23,6 +23,8 @@ android {
         buildConfigField "String", "TOOLBOX_SERVER_HOST", "\"${properties.getProperty("TOOLBOX_SERVER_HOST", "")}\""
         buildConfigField "String", "AGORA_APP_ID", "\"${properties.getProperty("AGORA_APP_ID", "")}\""
         buildConfigField "String", "AGORA_APP_CERTIFICATE", "\"${properties.getProperty("AGORA_APP_CERTIFICATE", "")}\""
+        buildConfigField "String", "CLOUD_PLAYER_KEY", "\"${properties.getProperty("CLOUD_PLAYER_KEY", "")}\""
+        buildConfigField "String", "CLOUD_PLAYER_SECRET", "\"${properties.getProperty("CLOUD_PLAYER_SECRET", "")}\""
     }
 
     buildTypes {
@@ -74,8 +76,11 @@ dependencies {
     implementation 'androidx.navigation:navigation-ui-ktx:2.4.1'
     implementation 'com.google.code.gson:gson:2.10.1'
     implementation 'com.squareup.okhttp3:okhttp:3.12.0'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.10.0'
     implementation 'com.github.mrmike:ok2curl:0.8.0'
 
+    // agora
+    implementation 'io.agora:authentication:1.6.1'
     // 歌词组件
     implementation 'com.github.AgoraIO-Community:LyricsView:1.1.1-beta.8'
     // ktvapi

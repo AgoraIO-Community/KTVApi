@@ -61,22 +61,31 @@ class MainFragment : BaseFragment<FragmentMainBinding>() {
                     success = { ret ->
                         val rtcToken = ret[TokenGenerator.AgoraTokenType.rtc] ?: ""
                         val rtmToken = ret[TokenGenerator.AgoraTokenType.rtm] ?: ""
-                        TokenGenerator.generateToken("${KeyCenter.channelId}_ex", KeyCenter.localUid.toString(),
+                        TokenGenerator.generateToken("${KeyCenter.channelId}_ad", KeyCenter.localUid.toString(),
                             TokenGenerator.TokenGeneratorType.token007, TokenGenerator.AgoraTokenType.rtc,
                             success = { exToken ->
-                                val chorusToken = exToken
-                                RtcEngineController.rtcToken = rtcToken
-                                RtcEngineController.rtmToken = rtmToken
-                                RtcEngineController.chorusChannelRtcToken = chorusToken
-                                findNavController().navigate(R.id.action_mainFragment_to_livingFragment)
+
+                                TokenGenerator.generateToken(KeyCenter.channelId, "2023",
+                                    TokenGenerator.TokenGeneratorType.token007, TokenGenerator.AgoraTokenType.rtc,
+                                    success = { musicToken ->
+                                        RtcEngineController.chorusChannelToken = rtcToken
+                                        RtcEngineController.rtmToken = rtmToken
+                                        RtcEngineController.audienceChannelToken = exToken
+                                        RtcEngineController.musicStreamToken = musicToken
+                                        findNavController().navigate(R.id.action_mainFragment_to_livingFragment)
+                                    },
+                                    failure = {
+                                        toast("获取 token 异常1")
+                                    }
+                                )
                             },
                             failure = {
-                                toast("获取 token 异常")
+                                toast("获取 token 异常2")
                             }
                         )
                     },
                     failure = {
-                        toast("获取 token 异常")
+                        toast("获取 token 异常3")
                     }
                 )
             }

@@ -50,7 +50,8 @@ object RtcEngineController {
             return innerRtcEngine!!
         }
 
-    var rtcToken: String = ""
-    var chorusChannelRtcToken = ""
+    var audienceChannelToken: String = ""
+    var chorusChannelToken: String = ""
+    var musicStreamToken = ""
     var rtmToken = ""
 }

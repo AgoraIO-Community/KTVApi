@@ -13,13 +13,17 @@ import io.agora.ktvapi.*
 import io.agora.ktvdemo.BuildConfig
 import io.agora.ktvdemo.MyApplication
 import io.agora.ktvdemo.R
+import io.agora.ktvdemo.api.ApiManager
 import io.agora.ktvdemo.databinding.FragmentLivingBinding
 import io.agora.ktvdemo.rtc.RtcEngineController
 import io.agora.ktvdemo.utils.DownloadUtils
 import io.agora.ktvdemo.utils.KeyCenter
 import io.agora.ktvdemo.utils.ZipUtils
 import io.agora.rtc2.ChannelMediaOptions
+import io.agora.rtc2.IRtcEngineEventHandler
+import io.agora.rtc2.RtcConnection
 import java.io.File
+import java.util.concurrent.Executors
 
 class LivingFragment : BaseFragment<FragmentLivingBinding>() {
 
@@ -30,6 +34,8 @@ class LivingFragment : BaseFragment<FragmentLivingBinding>() {
     }
 
     private val ktvApiEventHandler = object : IKTVApiEventHandler() {}
+
+    private val scheduledThreadPool = Executors.newScheduledThreadPool(5)
 
     override fun getViewBinding(inflater: LayoutInflater, container: ViewGroup?): FragmentLivingBinding {
         return FragmentLivingBinding.inflate(inflater)
@@ -45,10 +51,21 @@ class LivingFragment : BaseFragment<FragmentLivingBinding>() {
         if (KeyCenter.isLeadSinger() || KeyCenter.isCoSinger()) {
             ktvApi.setMicStatus(false)
         }
+
+        if (KeyCenter.isLeadSinger()) {
+            scheduledThreadPool.execute {
+                ApiManager.getInstance().fetchStartCloud(KeyCenter.channelId, 20232023)
+            }
+        }
     }
 
     override fun onDestroy() {
-        ktvApi.switchSingerRole(KTVSingRole.Audience, null)
+        if (KeyCenter.isLeadSinger()) {
+            scheduledThreadPool.execute {
+                ApiManager.getInstance().fetchStopCloud()
+            }
+        }
+        ktvApi.switchSingerRole2(KTVSingRole.Audience, null)
         ktvApi.removeEventHandler(ktvApiEventHandler)
         ktvApi.release()
         RtcEngineController.rtcEngine.leaveChannel()
@@ -61,7 +78,7 @@ class LivingFragment : BaseFragment<FragmentLivingBinding>() {
 
             // 退出场景
             btnClose.setOnClickListener {
-                ktvApi.switchSingerRole(KTVSingRole.Audience, null)
+                ktvApi.switchSingerRole2(KTVSingRole.Audience, null)
                 ktvApi.removeEventHandler(ktvApiEventHandler)
                 ktvApi.release()
                 RtcEngineController.rtcEngine.leaveChannel()
@@ -80,7 +97,7 @@ class LivingFragment : BaseFragment<FragmentLivingBinding>() {
                 if (KeyCenter.isLeadSinger()) {
                     Toast.makeText(MyApplication.app(), R.string.app_no_premission, Toast.LENGTH_SHORT).show()
                 } else {
-                    ktvApi.switchSingerRole(KTVSingRole.CoSinger, null)
+                    ktvApi.switchSingerRole2(KTVSingRole.CoSinger, null)
                 }
             }
 
@@ -89,7 +106,7 @@ class LivingFragment : BaseFragment<FragmentLivingBinding>() {
                 if (KeyCenter.isLeadSinger()) {
                     Toast.makeText(MyApplication.app(), R.string.app_no_premission, Toast.LENGTH_SHORT).show()
                 } else {
-                    ktvApi.switchSingerRole(KTVSingRole.Audience, null)
+                    ktvApi.switchSingerRole2(KTVSingRole.Audience, null)
                 }
             }
 
@@ -138,7 +155,7 @@ class LivingFragment : BaseFragment<FragmentLivingBinding>() {
                         override fun onMusicLoadSuccess(songCode: Long, lyricUrl: String) {
                             Log.d("Music", "onMusicLoadSuccess, songCode: $songCode, lyricUrl: $lyricUrl")
                             if (KeyCenter.isLeadSinger()) {
-                                ktvApi.switchSingerRole(KTVSingRole.LeadSinger, object : ISwitchRoleStateListener {
+                                ktvApi.switchSingerRole2(KTVSingRole.LeadSinger, object : ISwitchRoleStateListener {
                                     override fun onSwitchRoleSuccess() {
 
                                         // 加载成功开始播放音乐
@@ -150,7 +167,7 @@ class LivingFragment : BaseFragment<FragmentLivingBinding>() {
                                     }
                                 })
                             } else if (KeyCenter.isCoSinger()) {
-                                ktvApi.switchSingerRole(KTVSingRole.CoSinger, object : ISwitchRoleStateListener {
+                                ktvApi.switchSingerRole2(KTVSingRole.CoSinger, object : ISwitchRoleStateListener {
                                     override fun onSwitchRoleSuccess() {
 
                                     }
@@ -190,7 +207,7 @@ class LivingFragment : BaseFragment<FragmentLivingBinding>() {
                         override fun onMusicLoadSuccess(songCode: Long, lyricUrl: String) {
                             Log.d("Music", "onMusicLoadSuccess, songCode: $songCode, lyricUrl: $lyricUrl")
                             if (KeyCenter.isLeadSinger()) {
-                                ktvApi.switchSingerRole(KTVSingRole.LeadSinger, object : ISwitchRoleStateListener {
+                                ktvApi.switchSingerRole2(KTVSingRole.LeadSinger, object : ISwitchRoleStateListener {
                                     override fun onSwitchRoleSuccess() {
 
                                         // 加载成功开始播放音乐
@@ -202,7 +219,7 @@ class LivingFragment : BaseFragment<FragmentLivingBinding>() {
                                     }
                                 })
                             } else if (KeyCenter.isCoSinger()) {
-                                ktvApi.switchSingerRole(KTVSingRole.CoSinger, object : ISwitchRoleStateListener {
+                                ktvApi.switchSingerRole2(KTVSingRole.CoSinger, object : ISwitchRoleStateListener {
                                     override fun onSwitchRoleSuccess() {
 
                                     }
@@ -235,15 +252,15 @@ class LivingFragment : BaseFragment<FragmentLivingBinding>() {
             }
 
             // 取消加载歌曲并删除本地歌曲缓存
-            btRemoveMusic.setOnClickListener {
-                if (KeyCenter.isMcc) {
-                    ktvApi.removeMusic(KeyCenter.songCode)
-                    lyricsView.reset()
-                } else {
-                    ktvApi.removeMusic(KeyCenter.songCode2)
-                    lyricsView.reset()
-                }
-            }
+//            btRemoveMusic.setOnClickListener {
+//                if (KeyCenter.isMcc) {
+//                    ktvApi.removeMusic(KeyCenter.songCode)
+//                    lyricsView.reset()
+//                } else {
+//                    ktvApi.removeMusic(KeyCenter.songCode2)
+//                    lyricsView.reset()
+//                }
+//            }
 
             // 开麦
             btMicOn.setOnClickListener {
@@ -277,11 +294,19 @@ class LivingFragment : BaseFragment<FragmentLivingBinding>() {
             publishCameraTrack = false
             publishMicrophoneTrack = !KeyCenter.isAudience()
         }
-        RtcEngineController.rtcEngine.joinChannel(
-            RtcEngineController.rtcToken,
-            KeyCenter.channelId,
-            KeyCenter.localUid,
-            channelMediaOptions
+        RtcEngineController.rtcEngine.joinChannelEx(
+            RtcEngineController.audienceChannelToken,
+            RtcConnection(KeyCenter.channelId + "_ad", KeyCenter.localUid),
+            channelMediaOptions,
+            object : IRtcEngineEventHandler() {
+                override fun onStreamMessage(uid: Int, streamId: Int, data: ByteArray?) {
+                    ktvApi.setAudienceStreamMessage(uid, streamId, data)
+                }
+
+                override fun onAudioMetadataReceived(uid: Int, data: ByteArray?) {
+                    super.onAudioMetadataReceived(uid, data)
+                }
+            }
         )
     }
 
@@ -290,31 +315,34 @@ class LivingFragment : BaseFragment<FragmentLivingBinding>() {
             BuildConfig.AGORA_APP_ID,
             RtcEngineController.rtmToken,
             RtcEngineController.rtcEngine,
-            KeyCenter.channelId,
+            KeyCenter.channelId + "_ad",
             KeyCenter.localUid,
-            "${KeyCenter.channelId}_ex",
-            RtcEngineController.chorusChannelRtcToken,
+            KeyCenter.channelId,
+            RtcEngineController.chorusChannelToken,
             10,
-            KTVType.Normal,
+            KTVType.Cantata,
             KTVMusicType.SONG_CODE
         )
-        ktvApi.initialize(ktvApiConfig)
+        val giantChorusConfiguration = GiantChorusConfiguration(
+            RtcEngineController.audienceChannelToken,
+            2023,
+            RtcEngineController.musicStreamToken,
+            6
+        )
+        ktvApi.initialize(ktvApiConfig, giantChorusConfiguration)
         ktvApi.addEventHandler(ktvApiEventHandler)
         ktvApi.setLrcView(object : ILrcView {
-            override fun onUpdatePitch(pitch: Float?) {
+            override fun onUpdatePitch(pitch: Float) {
             }
 
-            override fun onUpdateProgress(progress: Long?) {
-                progress?.let {
-                    karaokeView?.setProgress(it)
-                }
+            override fun onUpdateProgress(progress: Long) {
+                karaokeView?.setProgress(progress)
             }
 
             override fun onDownloadLrcData(url: String?) {
                 url?.let {
                     dealDownloadLrc(it)
                 }
-
             }
 
             override fun onHighPartTime(highStartTime: Long, highEndTime: Long) {

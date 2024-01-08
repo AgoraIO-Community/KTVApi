@@ -15,7 +15,8 @@ import io.agora.rtc2.RtcEngine
  */
 enum class KTVType(val value: Int)  {
     Normal(0),
-    SingBattle(1)
+    SingBattle(1),
+    Cantata(2)
 }
 
 /**
@@ -97,13 +98,13 @@ interface ILrcView {
      * ktvApi内部更新音高pitch时会主动调用此方法将pitch值传给你的歌词组件
      * @param pitch 音高值
      */
-    fun onUpdatePitch(pitch: Float?)
+    fun onUpdatePitch(pitch: Float)
 
     /**
      * ktvApi内部更新音乐播放进度progress时会主动调用此方法将进度值progress传给你的歌词组件，50ms回调一次
      * @param progress 歌曲播放的真实进度 20ms回调一次
      */
-    fun onUpdateProgress(progress: Long?)
+    fun onUpdateProgress(progress: Long)
 
     /**
      * ktvApi获取到歌词地址时会主动调用此方法将歌词地址url传给你的歌词组件，您需要在这个回调内完成歌词的下载
@@ -222,6 +223,13 @@ data class KTVApiConfig constructor(
     val musicType: KTVMusicType = KTVMusicType.SONG_CODE
 )
 
+data class GiantChorusConfiguration constructor(
+    val audienceChannelToken: String,
+    val musicStreamUid: Int,
+    val musicChannelToken: String,
+    val topN: Int = 0
+)
+
 /**
  * 加载歌曲的配置，不允许在一首歌没有load完成前（成功/失败均算完成）进行下一首歌的加载
  * @param autoPlay 是否自动播放歌曲（通常主唱选择true）默认为false
@@ -246,7 +254,7 @@ interface KTVApi {
      * 初始化内部变量/缓存数据，并注册相应的监听，必须在其他KTVApi调用前调用initialize初始化KTVApi
      * @param config 初始化KTVApi的配置
      */
-    fun initialize(config: KTVApiConfig)
+    fun initialize(config: KTVApiConfig, giantChorusConfig: GiantChorusConfiguration?)
 
     /**
      * 更新ktvapi内部使用的streamId，每次加入频道需要更新内部streamId
@@ -401,12 +409,6 @@ interface KTVApi {
     )
 
     /**
-     * 取消加载歌曲，会打断加载歌曲的进程并移除歌曲缓存
-     * @param songCode 歌曲唯一编码
-     */
-    fun removeMusic(songCode: Long)
-
-    /**
      * 多文件切换播放资源
      * @param url 需要切换的播放资源，需要为 load2Music 中 参数 url1，url2 中的一个
      * @param syncPts 是否同步切换前后的起始播放位置: true 同步，false 不同步，从 0 开始
@@ -429,6 +431,12 @@ interface KTVApi {
      * 8、LeadSinger -》Audience 以领唱的身份结束歌曲时
      */
     fun switchSingerRole(
+        newRole: KTVSingRole,
+        switchRoleStateListener: ISwitchRoleStateListener?
+    )
+
+
+    fun switchSingerRole2(
         newRole: KTVSingRole,
         switchRoleStateListener: ISwitchRoleStateListener?
     )
@@ -485,6 +493,14 @@ interface KTVApi {
      * @param audioPlayoutDelay 音频帧处理和播放的时间差
      */
     fun setAudioPlayoutDelay(audioPlayoutDelay: Int)
+
+    /**
+     * 设置演唱的分数，推荐使用歌词组建回调的单句得分
+     * @param score 演唱分数
+     */
+    fun setSingingScore(score: Int)
+
+    fun setAudienceStreamMessage(uid: Int, streamId: Int, data: ByteArray?)
 
     /**
      * 获取mpk实例

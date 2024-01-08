@@ -91,14 +91,13 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:checked="true"
-            android:text="成都" />
+            android:text="遇见" />
 
         <RadioButton
             android:id="@+id/rbtLocalSong"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
-            android:visibility="gone"
             android:text="不如跳舞" />
     </RadioGroup>
 

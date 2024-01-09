@@ -161,6 +161,8 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
         startSyncScore()
         startSyncCloudConvergenceStatus()
         isRelease = false
+
+        mPlayer.setPlayerOption("play_pos_change_callback", 100)
     }
 
     override fun renewInnerDataStreamId() {
@@ -448,6 +450,11 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
                     super.onStreamMessage(uid, streamId, data)
                     dealWithStreamMessage(uid, streamId, data)
                 }
+
+                override fun onAudioMetadataReceived(uid: Int, data: ByteArray?) {
+                    super.onAudioMetadataReceived(uid, data)
+                    dealWithAudioMetadata(uid, data)
+                }
             })
 
             singerRole = newRole
@@ -467,6 +474,11 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
                 override fun onStreamMessage(uid: Int, streamId: Int, data: ByteArray?) {
                     super.onStreamMessage(uid, streamId, data)
                     dealWithStreamMessage(uid, streamId, data)
+                }
+
+                override fun onAudioMetadataReceived(uid: Int, data: ByteArray?) {
+                    super.onAudioMetadataReceived(uid, data)
+                    dealWithAudioMetadata(uid, data)
                 }
             })
 
@@ -734,6 +746,10 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
 
     override fun setAudienceStreamMessage(uid: Int, streamId: Int, data: ByteArray?) {
         dealWithStreamMessage(uid, streamId, data)
+    }
+
+    override fun setAudienceAudioMetadataReceived(uid: Int, data: ByteArray?) {
+        dealWithAudioMetadata(uid, data)
     }
 
     override fun getMediaPlayer(): IMediaPlayer {
@@ -1165,12 +1181,24 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
     // 开始播放歌词
     private val displayLrcTask = object : Runnable {
         override fun run() {
-            if (!mStopDisplayLrc){
+            if (!mStopDisplayLrc && singerRole != KTVSingRole.Audience){
                 val lastReceivedTime = mLastReceivedPlayPosTime ?: return
                 val curTime = System.currentTimeMillis()
                 val offset = curTime - lastReceivedTime
-                if (offset <= 1000) {
+                if (offset <= 100) {
                     val curTs = mReceivedPlayPosition + offset + highStartTime
+                    if (singerRole == KTVSingRole.LeadSinger || singerRole == KTVSingRole.SoloSinger) {
+                        val lrcTime = LrcTimeOuterClass.LrcTime.newBuilder()
+                            .setTypeValue(LrcTimeOuterClass.MsgType.LRC_TIME.number)
+                            .setForward(true)
+                            .setSongId(songIdentifier)
+                            .setTs(curTs)
+                            .setUid(giantChorusConfig.musicStreamUid)
+                            .build()
+
+                        val re = mRtcEngine.sendAudioMetadataEx(lrcTime.toByteArray(), mpkConnection)
+                        Log.d(TAG, "sendAudioMetadata, $lrcTime, length: ${lrcTime.toByteArray().size} ret: $re")
+                    }
                     runOnMainThread {
                         lrcView?.onUpdatePitch(pitch.toFloat())
                         // (fix ENT-489)Make lyrics delay for 200ms
@@ -1501,6 +1529,25 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
         }
     }
 
+    private fun dealWithAudioMetadata(uid: Int, data: ByteArray?) {
+        val messageData = data ?: return
+        val lrcTime = LrcTimeOuterClass.LrcTime.parseFrom(messageData)
+        if (lrcTime.type == LrcTimeOuterClass.MsgType.LRC_TIME) { //同步歌词
+            val realPosition = lrcTime.ts
+            val songId = lrcTime.songId
+            //val curTs = if (this.songIdentifier == songId) realPosition else 0
+            Log.d("setLrcTimeForAudience", "curTs: $realPosition")
+            runOnMainThread {
+                lrcView?.onUpdatePitch(pitch.toFloat())
+                // (fix ENT-489)Make lyrics delay for 200ms
+                // Per suggestion from Bob, it has a intrinsic buffer/delay between sound and `onPositionChanged(Player)`,
+                // such as AEC/Player/Device buffer.
+                // We choose the estimated 200ms.
+                lrcView?.onUpdateProgress(if (realPosition > 200) (realPosition - 200) else realPosition) // The delay here will impact both singer and audience side
+            }
+        }
+    }
+
     // ------------------------ AgoraMusicContentCenterEventDelegate  ------------------------
     override fun onPreLoadEvent(
         requestId: String?,
@@ -1646,7 +1693,6 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
             msg["playerState"] = MediaPlayerState.getValue(this.mediaPlayerState)
             msg["pitch"] = pitch
             msg["songIdentifier"] = songIdentifier
-            msg["forward"] = true
             val jsonMsg = JSONObject(msg)
             sendStreamMessageWithJsonObject(jsonMsg) {}
         }

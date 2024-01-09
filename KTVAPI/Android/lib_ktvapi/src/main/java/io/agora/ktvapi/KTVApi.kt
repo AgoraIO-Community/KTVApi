@@ -502,6 +502,8 @@ interface KTVApi {
 
     fun setAudienceStreamMessage(uid: Int, streamId: Int, data: ByteArray?)
 
+    fun setAudienceAudioMetadataReceived(uid: Int, data: ByteArray?)
+
     /**
      * 获取mpk实例
      */

@@ -305,6 +305,7 @@ class LivingFragment : BaseFragment<FragmentLivingBinding>() {
 
                 override fun onAudioMetadataReceived(uid: Int, data: ByteArray?) {
                     super.onAudioMetadataReceived(uid, data)
+                    ktvApi.setAudienceAudioMetadataReceived(uid, data)
                 }
             }
         )

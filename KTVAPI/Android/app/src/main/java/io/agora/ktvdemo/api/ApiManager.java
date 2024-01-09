@@ -2,8 +2,12 @@ package io.agora.ktvdemo.api;
 
 import android.util.Log;
 
+import androidx.annotation.NonNull;
+
 import com.moczul.ok2curl.CurlInterceptor;
+
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.Base64;
@@ -31,7 +35,8 @@ public class ApiManager {
         private static ApiManager apiManager = new ApiManager();
     }
 
-    private final String domain = "https://api.sd-rtn.com";
+    private final String domain = "http://218.205.37.50:16000";
+    private final String testIp = "218.205.37.50";
 
     private final String TAG = "ApiManager";
 
@@ -47,11 +52,11 @@ public class ApiManager {
             .build();
 
     public String fetchCloudToken() {
-        Log.d(TAG, "fetchCloudToken");
         String token = "";
         try {
             JSONObject acquireOjb = new JSONObject();
             acquireOjb.put("instanceId", System.currentTimeMillis() + "");
+            acquireOjb.put("testIp", testIp);
             Request request = new Request.Builder()
                     .url(getTokenUrl(domain, BuildConfig.AGORA_APP_ID))
                     .addHeader("Content-Type", "application/json")
@@ -78,7 +83,6 @@ public class ApiManager {
     }
 
     public void fetchStartCloud(String mainChannel, int cloudRtcUid) {
-        Log.d(TAG, "fetchStartCloud, mainChannel: " + mainChannel + " cloudRtcUid: " + cloudRtcUid);
         String token = fetchCloudToken();
         if (token.isEmpty()) {
             Log.e(TAG, "云端合流uid 请求报错 token is null");
@@ -97,7 +101,7 @@ public class ApiManager {
                     .put("rtc", inputRetObj);
             transcoderObj.put("audioInputs", new JSONArray().put(intObj));
 
-            transcoderObj.put("idleTimeout", 300);
+            transcoderObj.put("idleTimeout", 30);
 
             JSONObject audioOptionObj = new JSONObject()
                     .put("profileType", "AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO")
@@ -107,12 +111,12 @@ public class ApiManager {
                     .put("rtcToken", BuildConfig.AGORA_APP_ID)
                     .put("rtcChannel", mainChannel + "_ad");
             JSONObject dataStreamObj = new JSONObject()
-                    .put("source", new JSONObject().put("dataStream", true))
+                    .put("source", new JSONObject().put("audioMetaData", true))
                     .put("sink", new JSONObject());
             JSONObject outputsObj = new JSONObject()
                     .put("audioOption", audioOptionObj)
                     .put("rtc", outputRetObj)
-                    .put("dataStreamOption", dataStreamObj);
+                    .put("metaDataOption", dataStreamObj);
 
             transcoderObj.put("outputs", new JSONArray().put(outputsObj));
 
@@ -151,7 +155,6 @@ public class ApiManager {
     }
 
     public void fetchStopCloud() {
-        Log.d(TAG, "fetchStopCloud");
         if (taskId.isEmpty() || tokenName.isEmpty()) {
             Log.e(TAG, "云端合流任务停止失败 taskId || tokenName is null");
             return;
@@ -189,9 +192,22 @@ public class ApiManager {
         return String.format("%s/v1/projects/%s/rtsc/cloud-transcoder/tasks/%s?builderToken=%s", domain, appid, taskid, tokenName);
     }
 
+//    private String getRtcToken(String channelId, int uid) {
+//        String rtcToken = "";
+//        try {
+//            rtcToken = new RtcTokenBuilder().buildTokenWithUid(
+//                    BuildConfig.RTC_APP_ID, BuildConfig.RTC_APP_CERT, channelId, uid,
+//                    RtcTokenBuilder.Role.Role_Publisher, 0
+//            );
+//        } catch (Exception e) {
+//            Log.e("getRtcToken", "rtc token build error " + e.getMessage());
+//        }
+//        return rtcToken;
+//    }
+
     private String getBasicAuth() {
         // 拼接客户 ID 和客户密钥并使用 base64 编码
-        String plainCredentials = BuildConfig.CLOUD_PLAYER_KEY + ":" + BuildConfig.CLOUD_PLAYER_SECRET;
+        String plainCredentials = BuildConfig.AGORA_APP_ID + ":" + BuildConfig.AGORA_APP_CERTIFICATE;
         String base64Credentials = null;
         base64Credentials = new String(Base64.getEncoder().encode(plainCredentials.getBytes()));
         // 创建 authorization header

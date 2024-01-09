@@ -7,4 +7,5 @@ target 'KTVApiDemo' do
   pod 'AgoraLyricsScore', '1.1.1-beta-3'
   pod 'Zip'
   pod 'SVProgressHUD'
+  pod 'SwiftProtobuf'
 end

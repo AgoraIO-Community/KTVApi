@@ -25,13 +25,14 @@ class KTVViewController: UIViewController {
     var rtcToken: String?
     var rtmToken: String?
     var rtcPlayerToken: String?
+    var audienceToken: String?
     var userId: Int = 0
     
     let mainSingerId = 1000
     let coSingerId = 2000
     let audienceId = 3000
     
-    let mccSongCode = 6654550232746660
+    var mccSongCode = 0
     
     var lyricView: KTVLyricView!
     
@@ -47,6 +48,9 @@ class KTVViewController: UIViewController {
 
     let muteBtn: UIButton = UIButton()
     let unmuteBtn: UIButton = UIButton()
+    
+    let playBtn: UIButton = UIButton()
+    let pauseBtn: UIButton = UIButton()
 
     private var loadMusicCallBack:((Bool, String)->Void)?
     
@@ -56,8 +60,9 @@ class KTVViewController: UIViewController {
         self.view.backgroundColor = .white
         self.title = "KTV online"
         
-        if role == .leadSinger {
+        if role == .leadSinger || role == .soloSinger{
             userId = mainSingerId
+            ApiManager.shared.fetchStartCloud(mainChannel: channelName, cloudRtcUid: 232425)
         } else if role == .coSinger {
             userId = coSingerId
         } else {
@@ -80,6 +85,7 @@ class KTVViewController: UIViewController {
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         leaveChannel()
+        ApiManager.shared.fetchStopCloud()
     }
     
     private func layoutUI() {
@@ -141,6 +147,20 @@ class KTVViewController: UIViewController {
         unmuteBtn.setTitle("关麦", for: .normal)
         unmuteBtn.addTarget(self, action: #selector(unmute), for: .touchUpInside)
         view.addSubview(unmuteBtn)
+        
+        //开麦
+        playBtn.frame = CGRect(x: 10, y: 420, width: 100, height: 40)
+        playBtn.backgroundColor = .gray
+        playBtn.setTitle("播放", for: .normal)
+        playBtn.addTarget(self, action: #selector(resume), for: .touchUpInside)
+        view.addSubview(playBtn)
+        
+        //关麦
+        pauseBtn.frame = CGRect(x: 150, y: 420, width: 100, height: 40)
+        pauseBtn.backgroundColor = .gray
+        pauseBtn.setTitle("暂停", for: .normal)
+        pauseBtn.addTarget(self, action: #selector(pause), for: .touchUpInside)
+        view.addSubview(pauseBtn)
 
     }
     
@@ -162,14 +182,17 @@ class KTVViewController: UIViewController {
     }
     
     private func loadKTVApi() {
-        getMccData(with: "\(userId)") {[weak self] rtcToken, rtmToken, rtcPlayerToken in
+        getMccData(with: "\(userId)") {[weak self] rtcToken, rtmToken, rtcPlayerToken, audienceToken in
             guard let self = self else {return}
             self.rtcToken = rtcToken
             self.rtmToken = rtmToken
             self.rtcPlayerToken = rtcPlayerToken
+            self.audienceToken = audienceToken
             
-            let apiConfig = KTVApiConfig(appId: KeyCenter.AppId, rtmToken: self.type == .mcc ? (self.rtmToken ?? "") : "", engine: self.rtcKit, channelName: self.channelName, localUid: self.userId, chorusChannelName: "\(self.channelName)_ex", chorusChannelToken: self.rtcPlayerToken ?? "", type: .normal, maxCacheSize: 10, musicType: self.type == .mcc ? .mcc : .local, isDebugMode: false)
-            self.ktvApi = KTVApiImpl(config: apiConfig)
+            let apiConfig = KTVApiConfig(appId: KeyCenter.AppId, rtmToken: self.type == .mcc ? (self.rtmToken ?? "") : "", engine: rtcKit, channelName: "\(channelName)_ad", localUid: self.userId, chorusChannelName: "\(channelName)", chorusChannelToken: rtcToken, type: .cantata, maxCacheSize: 10, musicType: .mcc, isDebugMode: false)
+            let giantConfig = GiantChorusConfiguration(audienceChannelToken: audienceToken, musicStreamUid: 2023, musicChannelToken: rtcPlayerToken, topN: 6)
+
+            self.ktvApi = KTVApiImpl(config: apiConfig, giantConfig: giantConfig)
             self.ktvApi.renewInnerDataStreamId()
             self.ktvApi.setLrcView(view: self.lyricView)
             self.ktvApi.addEventHandler(ktvApiEventHandler: self)
@@ -196,7 +219,7 @@ class KTVViewController: UIViewController {
     
     
     private func switchRole() {
-        ktvApi.switchSingerRole(newRole: role) { state, failReason in
+        ktvApi.switchSingerRole2(newRole: role) { state, failReason in
             
         }
     }
@@ -233,13 +256,13 @@ class KTVViewController: UIViewController {
         rtcKit.leaveChannel()
     }
     
-    private func getMccData(with userId: String, completion:@escaping ((String, String, String)->Void)) {
-        var tokenMap1:[Int: String] = [:], tokenMap2:[Int: String] = [:]
+    private func getMccData(with userId: String, completion:@escaping ((String, String, String, String)->Void)) {
+        var tokenMap1:[Int: String] = [:], tokenMap2:[Int: String] = [:], tokenMap3:[Int: String] = [:]
         
         let dispatchGroup = DispatchGroup()
         dispatchGroup.enter()
         NetworkManager.shared.generateTokens(channelName: channelName,
-                                             uid: userId,
+                                             uid: "\(userId)",
                                              tokenGeneratorType: .token006,
                                              tokenTypes: [.rtc, .rtm]) { tokenMap in
             tokenMap1 = tokenMap
@@ -247,22 +270,34 @@ class KTVViewController: UIViewController {
         }
         
         dispatchGroup.enter()
-        NetworkManager.shared.generateTokens(channelName: "\(channelName)_ex",
-                                             uid: userId,
+        NetworkManager.shared.generateTokens(channelName: "\(channelName)_ad",
+                                             uid: "\(userId)",
                                              tokenGeneratorType: .token006,
                                              tokenTypes: [.rtc]) { tokenMap in
             tokenMap2 = tokenMap
             dispatchGroup.leave()
         }
         
-        dispatchGroup.notify(queue: .main){
-           if let rtcToken = tokenMap1[NetworkManager.AgoraTokenType.rtc.rawValue],
-            let rtmToken = tokenMap1[NetworkManager.AgoraTokenType.rtm.rawValue],
-              let rtcPlayerToken = tokenMap2[NetworkManager.AgoraTokenType.rtc.rawValue] {
-               completion(rtcToken, rtmToken, rtcPlayerToken)
-           } else {
-               print("获取MCC信息失败")
-           }
+        dispatchGroup.enter()
+        NetworkManager.shared.generateTokens(channelName: "\(channelName)",
+                                             uid: "2023",
+                                             tokenGeneratorType: .token006,
+                                             tokenTypes: [.rtc]) { tokenMap in
+            tokenMap3 = tokenMap
+            dispatchGroup.leave()
+        }
+        
+        dispatchGroup.notify(queue: .main){[weak self] in
+            guard let _ = self,
+                  let rtcToken = tokenMap1[NetworkManager.AgoraTokenType.rtc.rawValue],
+                  let rtmToken = tokenMap1[NetworkManager.AgoraTokenType.rtm.rawValue],
+                  let audienceToken = tokenMap2[NetworkManager.AgoraTokenType.rtc.rawValue],
+                  let rtcPlayerToken = tokenMap3[NetworkManager.AgoraTokenType.rtc.rawValue]
+            else {
+                print("获取MCC信息失败")
+                return
+            }
+            completion(rtcToken, rtmToken, rtcPlayerToken, audienceToken)
         }
     }
     
@@ -304,7 +339,14 @@ extension KTVViewController {
     @objc private func unmute() {
         self.ktvApi.muteMic(muteStatus: false)
     }
-
+    
+    @objc private func pause() {
+        self.ktvApi.getMusicPlayer()?.pause()
+    }
+    
+    @objc private func resume() {
+        self.ktvApi.getMusicPlayer()?.resume()
+    }
 }
 
 extension KTVViewController: AgoraRtcEngineDelegate {
@@ -312,10 +354,16 @@ extension KTVViewController: AgoraRtcEngineDelegate {
 
     }
     
+    func rtcEngine(_ engine: AgoraRtcEngineKit, audioMetadataReceived uid: UInt, metadata: Data) {
+//        if self.role == .audience {
+//            self.ktvApi.audioMetadataReceived(uid: uid, metadata: metadata)
+//        }
+    }
+    
     @objc private func leaveChorus() {
         if role == .coSinger {
             //合唱者才能离开合唱
-            self.ktvApi.switchSingerRole(newRole: .audience) { state, reason in
+            self.ktvApi.switchSingerRole2(newRole: .audience) { state, reason in
                 self.role = .audience
             }
         } else {

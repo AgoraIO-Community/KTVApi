@@ -16,6 +16,7 @@ class ViewController: UIViewController {
     var rtcPlayerToken: String?
     var userId: Int = 0
     @IBOutlet weak var tf: UITextField!
+    var mccSongCode = 0
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -26,17 +27,16 @@ class ViewController: UIViewController {
         role = .leadSinger
     }
     
-    @IBAction func coSet(_ sender: Any) {
-        role = .coSinger
-    }
-    
-    
     @IBAction func auSet(_ sender: Any) {
         role = .audience
     }
     
     @IBAction func valueChange(_ sender: UISegmentedControl) {
         type = sender.selectedSegmentIndex == 0 ? .mcc : .local
+    }
+    
+    @IBAction func musicChoose(_ sender: UISegmentedControl) {
+        mccSongCode = sender.selectedSegmentIndex == 0 ? 6625526624816000 : 6625526603433040
     }
     
     @IBAction func startSing(_ sender: UIButton) {
@@ -48,6 +48,7 @@ class ViewController: UIViewController {
         let vc = KTVViewController()
         vc.role = role
         vc.type = type
+        vc.mccSongCode = mccSongCode
         vc.channelName = channelName
         self.navigationController?.pushViewController(vc, animated: true)
     }

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="21507" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="PHV-xQ-rL3">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="22155" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="PHV-xQ-rL3">
     <device id="retina6_12" orientation="portrait" appearance="light"/>
     <dependencies>
         <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="21505"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="22131"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
@@ -40,10 +40,10 @@
                                 <nil key="highlightedColor"/>
                             </label>
                             <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="fillEqually" spacing="20" translatesAutoresizingMaskIntoConstraints="NO" id="Gal-P1-Fh2">
-                                <rect key="frame" x="50" y="233.33333333333337" width="293" height="200"/>
+                                <rect key="frame" x="50" y="233.33333333333337" width="293" height="100"/>
                                 <subviews>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="IQn-Bc-0KE">
-                                        <rect key="frame" x="0.0" y="0.0" width="293" height="53.333333333333336"/>
+                                        <rect key="frame" x="0.0" y="0.0" width="293" height="40"/>
                                         <color key="backgroundColor" white="0.66666666669999997" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="主唱"/>
@@ -51,17 +51,8 @@
                                             <action selector="leadSet:" destination="BYZ-38-t0r" eventType="touchUpInside" id="SCt-Fw-OfS"/>
                                         </connections>
                                     </button>
-                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="4rw-8l-oX6">
-                                        <rect key="frame" x="0.0" y="73.333333333333343" width="293" height="53.333333333333343"/>
-                                        <color key="backgroundColor" red="0.25098039220000001" green="0.25098039220000001" blue="0.25098039220000001" alpha="1" colorSpace="calibratedRGB"/>
-                                        <state key="normal" title="Button"/>
-                                        <buttonConfiguration key="configuration" style="plain" title="合唱"/>
-                                        <connections>
-                                            <action selector="coSet:" destination="BYZ-38-t0r" eventType="touchUpInside" id="4kg-aC-Lp8"/>
-                                        </connections>
-                                    </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="LD5-tS-pCb">
-                                        <rect key="frame" x="0.0" y="146.66666666666666" width="293" height="53.333333333333343"/>
+                                        <rect key="frame" x="0.0" y="59.999999999999972" width="293" height="40"/>
                                         <color key="backgroundColor" red="0.1176470588" green="0.047058823530000002" blue="0.066666666669999999" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="观众"/>
@@ -71,11 +62,11 @@
                                     </button>
                                 </subviews>
                                 <constraints>
-                                    <constraint firstAttribute="height" constant="200" id="t0B-6u-A1a"/>
+                                    <constraint firstAttribute="height" constant="100" id="t0B-6u-A1a"/>
                                 </constraints>
                             </stackView>
                             <textField opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="248" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" placeholder="请输入频道名称" textAlignment="center" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="AAL-sd-AO6">
-                                <rect key="frame" x="20" y="483.33333333333331" width="353" height="43.999999999999943"/>
+                                <rect key="frame" x="20" y="383.33333333333331" width="353" height="44"/>
                                 <constraints>
                                     <constraint firstAttribute="height" constant="44" id="5Iv-Sp-b9v"/>
                                 </constraints>
@@ -96,13 +87,23 @@
                                 </connections>
                             </button>
                             <segmentedControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="plain" selectedSegmentIndex="0" translatesAutoresizingMaskIntoConstraints="NO" id="sms-yZ-8dD">
-                                <rect key="frame" x="64" y="557.33333333333337" width="265" height="32"/>
+                                <rect key="frame" x="64" y="457.33333333333331" width="265" height="32"/>
                                 <segments>
                                     <segment title="MCC 声网歌曲中心"/>
                                     <segment title="Local 本地音乐"/>
                                 </segments>
                                 <connections>
                                     <action selector="valueChange:" destination="BYZ-38-t0r" eventType="valueChanged" id="GZ7-MG-QPM"/>
+                                </connections>
+                            </segmentedControl>
+                            <segmentedControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="plain" selectedSegmentIndex="0" translatesAutoresizingMaskIntoConstraints="NO" id="7A6-Ko-EAI">
+                                <rect key="frame" x="64" y="498.33333333333326" width="265" height="32"/>
+                                <segments>
+                                    <segment title="不如跳舞"/>
+                                    <segment title="遇见"/>
+                                </segments>
+                                <connections>
+                                    <action selector="musicChoose:" destination="BYZ-38-t0r" eventType="valueChanged" id="HP4-gE-bc0"/>
                                 </connections>
                             </segmentedControl>
                         </subviews>
@@ -119,7 +120,11 @@
                             <constraint firstItem="cTX-TJ-qC4" firstAttribute="centerX" secondItem="8bC-Xf-vdC" secondAttribute="centerX" id="Qp4-mP-OGg"/>
                             <constraint firstItem="cTX-TJ-qC4" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="50" id="XIW-Ap-gve"/>
                             <constraint firstItem="jy6-HN-gmr" firstAttribute="centerX" secondItem="8bC-Xf-vdC" secondAttribute="centerX" id="ZFB-Zq-J4o"/>
+                            <constraint firstItem="7A6-Ko-EAI" firstAttribute="top" secondItem="sms-yZ-8dD" secondAttribute="bottom" constant="10" id="aIi-dq-eqZ"/>
+                            <constraint firstItem="7A6-Ko-EAI" firstAttribute="width" secondItem="sms-yZ-8dD" secondAttribute="width" id="aM7-cu-MBS"/>
+                            <constraint firstItem="7A6-Ko-EAI" firstAttribute="trailing" secondItem="sms-yZ-8dD" secondAttribute="trailing" id="b0L-1K-Acw"/>
                             <constraint firstItem="AAL-sd-AO6" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="20" id="brt-lG-NQE"/>
+                            <constraint firstItem="7A6-Ko-EAI" firstAttribute="leading" secondItem="sms-yZ-8dD" secondAttribute="leading" id="lir-Z3-VA6"/>
                             <constraint firstItem="jy6-HN-gmr" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" constant="50" id="nja-3o-zz3"/>
                             <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="Gal-P1-Fh2" secondAttribute="trailing" constant="50" id="rEM-vJ-8kG"/>
                             <constraint firstItem="Gal-P1-Fh2" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="50" id="tmY-GR-W9k"/>

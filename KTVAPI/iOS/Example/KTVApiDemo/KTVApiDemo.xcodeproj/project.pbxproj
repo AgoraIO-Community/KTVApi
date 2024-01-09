@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E39B08122B4BD13200384685 /* ApiManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E39B08112B4BD13200384685 /* ApiManager.swift */; };
+		E3C126D12B4CEDC80012A94B /* LrcTime.proto in Sources */ = {isa = PBXBuildFile; fileRef = E3C126D02B4CEDC80012A94B /* LrcTime.proto */; };
+		E3C126D32B4CEEF70012A94B /* LrcTime.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3C126D22B4CEEF70012A94B /* LrcTime.pb.swift */; };
 		E3CB4D602A935EBD00322389 /* 成都.xml in Resources */ = {isa = PBXBuildFile; fileRef = E3CB4D5F2A935EBD00322389 /* 成都.xml */; };
 		E3ED270B2A822E9D0087B7AA /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3ED270A2A822E9D0087B7AA /* AppDelegate.swift */; };
 		E3ED270D2A822E9D0087B7AA /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3ED270C2A822E9D0087B7AA /* SceneDelegate.swift */; };
@@ -36,6 +39,9 @@
 		0AFBE8E6CA2314F17EF33468 /* Pods_KTVApiDemo.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_KTVApiDemo.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		91649F2302F7D5A73F303630 /* Pods-KTVApiDemo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-KTVApiDemo.release.xcconfig"; path = "Target Support Files/Pods-KTVApiDemo/Pods-KTVApiDemo.release.xcconfig"; sourceTree = "<group>"; };
 		AFA8596CCA93FAF74AD1D2D5 /* Pods-KTVApiDemo.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-KTVApiDemo.debug.xcconfig"; path = "Target Support Files/Pods-KTVApiDemo/Pods-KTVApiDemo.debug.xcconfig"; sourceTree = "<group>"; };
+		E39B08112B4BD13200384685 /* ApiManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ApiManager.swift; sourceTree = "<group>"; };
+		E3C126D02B4CEDC80012A94B /* LrcTime.proto */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.protobuf; path = LrcTime.proto; sourceTree = "<group>"; };
+		E3C126D22B4CEEF70012A94B /* LrcTime.pb.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LrcTime.pb.swift; sourceTree = "<group>"; };
 		E3CB4D5F2A935EBD00322389 /* 成都.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = "成都.xml"; sourceTree = "<group>"; };
 		E3ED27072A822E9D0087B7AA /* KTVApiDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KTVApiDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E3ED270A2A822E9D0087B7AA /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -134,6 +140,9 @@
 		E3ED271E2A822ED30087B7AA /* KTVAPI */ = {
 			isa = PBXGroup;
 			children = (
+				E39B08112B4BD13200384685 /* ApiManager.swift */,
+				E3C126D02B4CEDC80012A94B /* LrcTime.proto */,
+				E3C126D22B4CEEF70012A94B /* LrcTime.pb.swift */,
 				E3ED271F2A822ED30087B7AA /* KTVApiImpl.swift */,
 				E3ED27202A822ED30087B7AA /* KTVApi.swift */,
 			);
@@ -275,13 +284,16 @@
 				E3ED27392A8312120087B7AA /* AgoraStringExtention.swift in Sources */,
 				E3ED273B2A8312120087B7AA /* AgoraDownLoadManager.swift in Sources */,
 				E3ED27212A822ED30087B7AA /* KTVApiImpl.swift in Sources */,
+				E3C126D12B4CEDC80012A94B /* LrcTime.proto in Sources */,
 				E3ED27222A822ED30087B7AA /* KTVApi.swift in Sources */,
 				E3ED270F2A822E9D0087B7AA /* ViewController.swift in Sources */,
 				E3ED270B2A822E9D0087B7AA /* AppDelegate.swift in Sources */,
+				E3C126D32B4CEEF70012A94B /* LrcTime.pb.swift in Sources */,
 				E3ED27342A8312120087B7AA /* AgoraMiguXmlLrcParse.swift in Sources */,
 				E3ED27282A8243480087B7AA /* NetworkManager.swift in Sources */,
 				E3ED27242A8230A00087B7AA /* KeyCenter.swift in Sources */,
 				E3ED27382A8312120087B7AA /* AgoraCacheFileHandle.swift in Sources */,
+				E39B08122B4BD13200384685 /* ApiManager.swift in Sources */,
 				E3ED272A2A826B0D0087B7AA /* KTVLyricView.swift in Sources */,
 				E3ED270D2A822E9D0087B7AA /* SceneDelegate.swift in Sources */,
 				E3ED27262A8236750087B7AA /* KTVViewController.swift in Sources */,

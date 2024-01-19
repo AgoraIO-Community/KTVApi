@@ -1181,7 +1181,8 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
     // 开始播放歌词
     private val displayLrcTask = object : Runnable {
         override fun run() {
-            if (!mStopDisplayLrc && singerRole != KTVSingRole.Audience){
+            if (!mStopDisplayLrc){
+                if (singerRole == KTVSingRole.Audience) return
                 val lastReceivedTime = mLastReceivedPlayPosTime ?: return
                 val curTime = System.currentTimeMillis()
                 val offset = curTime - lastReceivedTime
@@ -1424,6 +1425,7 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
     }
 
     // ------------------------ AgoraRtcEvent ------------------------
+    private var recvFromDataStream = false
     private fun dealWithStreamMessage(uid: Int, streamId: Int, data: ByteArray?) {
         val jsonMsg: JSONObject
         val messageData = data ?: return
@@ -1481,12 +1483,17 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
                     }
                 } else {
                     // 独唱观众
-                    if (this.songIdentifier == songId) {
-                        mLastReceivedPlayPosTime = System.currentTimeMillis()
-                        mReceivedPlayPosition = realPosition
+                    if (jsonMsg.has("ver")) {
+                        recvFromDataStream = false
                     } else {
-                        mLastReceivedPlayPosTime = null
-                        mReceivedPlayPosition = 0
+                        recvFromDataStream = true
+                        if (this.songIdentifier == songId) {
+                            mLastReceivedPlayPosTime = System.currentTimeMillis()
+                            mReceivedPlayPosition = realPosition
+                        } else {
+                            mLastReceivedPlayPosTime = null
+                            mReceivedPlayPosition = 0
+                        }
                     }
                 }
             } else if (jsonMsg.getString("cmd") == "Seek") {
@@ -1693,6 +1700,8 @@ class KTVApiImpl : KTVApi, IMusicContentCenterEventHandler, IMediaPlayerObserver
             msg["playerState"] = MediaPlayerState.getValue(this.mediaPlayerState)
             msg["pitch"] = pitch
             msg["songIdentifier"] = songIdentifier
+            msg["forward"] = true
+            msg["ver"] = 2
             val jsonMsg = JSONObject(msg)
             sendStreamMessageWithJsonObject(jsonMsg) {}
         }

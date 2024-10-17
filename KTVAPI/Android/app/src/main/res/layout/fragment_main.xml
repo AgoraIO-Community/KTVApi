@@ -28,7 +28,7 @@
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="32dp"
         android:layout_marginTop="32dp"
-        android:background="@color/darker_gray"
+        android:background="@color/button_color_selector"
         android:text="@string/app_lead_singer"
         android:textColor="@color/black"
         app:layout_constraintEnd_toEndOf="parent"
@@ -41,7 +41,7 @@
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="32dp"
         android:layout_marginTop="16dp"
-        android:background="@color/lighter_gray"
+        android:background="@color/button_color_selector"
         android:text="@string/app_audience"
         android:textColor="@color/black"
         app:layout_constraintEnd_toEndOf="parent"
@@ -77,18 +77,18 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:checked="true"
-            android:text="@string/app_mcc_tag" />
+            android:text="十年" />
 
         <RadioButton
             android:id="@+id/rbtLocalSong"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
-            android:text="@string/app_local_music_tag" />
+            android:text="在你的身边" />
     </RadioGroup>
 
     <RadioGroup
-        android:id="@+id/ktvApiType"
+        android:id="@+id/chorusScene"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="32dp"
@@ -112,6 +112,31 @@
             android:text="@string/app_giant_ktvapi_tag" />
     </RadioGroup>
 
+    <RadioGroup
+        android:id="@+id/mccType"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="32dp"
+        android:layout_marginTop="10dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        app:layout_constraintTop_toBottomOf="@id/chorusScene">
+
+        <RadioButton
+            android:id="@+id/rbtMcc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="@string/app_mcc_tag" />
+
+        <RadioButton
+            android:id="@+id/rbtMccEx"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="@string/app_mccex_tag" />
+    </RadioGroup>
+
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btnStartChorus"
@@ -123,5 +148,5 @@
         android:textColor="@color/black"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/ktvApiType" />
+        app:layout_constraintTop_toBottomOf="@id/mccType" />
 </androidx.constraintlayout.widget.ConstraintLayout>

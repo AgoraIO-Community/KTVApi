@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KTVAPI-Demo</string>
+    <string name="app_name">KTVAPIEX-Demo</string>
     <string name="app_lead_singer">主唱</string>
     <string name="app_co_singer">合唱</string>
     <string name="app_audience">观众</string>
@@ -18,6 +18,7 @@
     <string name="app_choose_role_tag">请选择初始演唱身份!</string>
     <string name="app_input_channel_name">请输入 channel name</string>
     <string name="app_mcc_tag">MCC 声网歌曲中心</string>
+    <string name="app_mccex_tag">MCCEX 歌曲中心</string>
     <string name="app_local_music_tag">Local 本地音乐</string>
     <string name="app_normal_ktvapi_tag">独唱、小合唱</string>
     <string name="app_giant_ktvapi_tag">大合唱</string>

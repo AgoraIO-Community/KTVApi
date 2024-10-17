@@ -9,12 +9,12 @@ properties.load(inputStream)
 
 android {
     namespace 'io.agora.ktvdemo'
-    compileSdk 31
+    compileSdk 33
 
     defaultConfig {
         applicationId "io.agora.ktvdemo"
         minSdk 21
-        targetSdk 31
+        targetSdk 33
         versionCode 1
         versionName "1.0"
 
@@ -25,6 +25,11 @@ android {
         buildConfigField "String", "AGORA_APP_CERTIFICATE", "\"${properties.getProperty("AGORA_APP_CERTIFICATE", "")}\""
         buildConfigField "String", "RESTFUL_API_KEY", "\"${RESTFUL_API_KEY}\""
         buildConfigField "String", "RESTFUL_API_SECRET", "\"${RESTFUL_API_SECRET}\""
+
+        buildConfigField "String", "EX_APP_ID", "\"${properties.getProperty("EX_APP_ID", "")}\""
+        buildConfigField "String", "EX_APP_Key", "\"${properties.getProperty("EX_APP_Key", "")}\""
+        buildConfigField "String", "EX_APP_TOKEN", "\"${properties.getProperty("EX_APP_TOKEN", "")}\""
+        buildConfigField "String", "EX_USERID", "\"${properties.getProperty("EX_USERID", "")}\""
     }
 
     buildTypes {
@@ -80,11 +85,18 @@ dependencies {
     implementation 'com.github.mrmike:ok2curl:0.8.0'
 
     // 歌词组件
-    implementation 'com.github.AgoraIO-Community:LyricsView:1.1.1-beta.8'
+    implementation 'com.github.AgoraIO-Community:LyricsView:1.1.4'
+
+    // 歌词组件 Ex
+    implementation 'io.github.winskyan:Agora-LyricsViewEx:2.0.0.130'
     //
     implementation 'io.agora:authentication:1.6.1'
     // ktvapi
     api project(":lib_ktvapi")
+    api project(":lib_ktvapi_ex")
+
+//    runtimeOnly project(':lib_ktvapi')
+//    runtimeOnly project(':lib_ktvapi_ex')
 }
 
 static def releaseTime() {

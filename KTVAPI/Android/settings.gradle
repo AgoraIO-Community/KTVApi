@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 rootProject.name = "KtvApiDemo"
 include ':app'
 include ':lib_ktvapi'
+include ':lib_ktvapi_ex'

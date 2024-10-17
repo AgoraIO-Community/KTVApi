@@ -16,6 +16,10 @@
         <action
             android:id="@+id/action_mainFragment_to_livingFragment"
             app:destination="@id/navigation_living" />
+
+        <action
+            android:id="@+id/action_mainFragment_to_livingFragmentEx"
+            app:destination="@id/navigation_living_ex" />
     </fragment>
 
     <fragment
@@ -26,6 +30,17 @@
 
         <action
             android:id="@+id/action_livingFragment_to_homeFragment"
+            app:destination="@id/navigation_main" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_living_ex"
+        android:name="io.agora.ktvdemo.ui.LivingFragmentEx"
+        android:label=""
+        tools:layout="@layout/fragment_living_ex" >
+
+        <action
+            android:id="@+id/action_livingFragmentEx_to_homeFragment"
             app:destination="@id/navigation_main" />
     </fragment>
 </navigation>

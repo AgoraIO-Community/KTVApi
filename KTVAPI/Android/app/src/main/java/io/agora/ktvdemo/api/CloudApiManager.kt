@@ -77,7 +77,7 @@ class CloudApiManager private constructor() {
         return token
     }
 
-    fun fetchStartCloud(mainChannel: String, inputToken: String, outputToken: String) {
+    fun fetchStartCloud(mainChannel: String, inputRtcUid: Int, inputToken: String, outputToken: String) {
         val token = fetchCloudToken()
         tokenName = token.ifEmpty {
             Log.e(TAG, "云端合流uid 请求报错 token is null")
@@ -87,7 +87,7 @@ class CloudApiManager private constructor() {
         try {
             val transcoderObj = JSONObject()
             val inputRetObj = JSONObject()
-                .put("rtcUid", 0)
+                .put("rtcUid", inputRtcUid)
                 .put("rtcToken", inputToken)
                 .put("rtcChannel", mainChannel)
             val intObj = JSONObject()
@@ -195,7 +195,7 @@ class CloudApiManager private constructor() {
             return "Basic $base64Credentials"
         }
 
-    private fun getString(resId:Int):String{
+    private fun getString(resId: Int): String {
         return MyApplication().getString(resId)
     }
 }

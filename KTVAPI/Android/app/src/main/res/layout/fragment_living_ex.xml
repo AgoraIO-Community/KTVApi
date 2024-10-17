@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <io.agora.karaoke_view.v11.ScoringView
+    <io.agora.karaoke_view_ex.ScoringView
         android:id="@+id/scoringView"
         android:layout_width="match_parent"
         android:layout_height="90dp"
@@ -19,10 +19,11 @@
         app:pitchStickHeight="4dp"
         app:pitchStickHighlightedColor="#FF8AB4" />
 
-    <io.agora.karaoke_view.v11.LyricsView
+    <io.agora.karaoke_view_ex.LyricsView
         android:id="@+id/lyricsView"
         android:layout_width="match_parent"
         android:layout_height="200dp"
+        android:layout_marginTop="4dp"
         android:background="#666666"
         android:paddingTop="14dp"
         app:currentLineHighlightedTextColor="#FF8AB4"
@@ -30,13 +31,11 @@
         app:currentLineTextSize="16sp"
         app:labelWhenNoLyrics="@string/app_no_lyric"
         app:layout_constraintTop_toBottomOf="@+id/scoringView"
-        app:layout_constraintVertical_bias="0.0"
         app:lineSpacing="6dp"
         app:paddingTop="2dp"
-        app:startOfVerseIndicatorPaddingTop="6dp"
-        app:startOfVerseIndicatorRadius="4dp"
         app:textGravity="center"
-        app:textSize="14sp" />
+        app:textSize="14sp"
+        tools:layout_editor_absoluteX="-16dp" />
 
     <androidx.appcompat.widget.AppCompatTextView
         android:id="@+id/tvSinger"
@@ -56,11 +55,10 @@
         android:layout_height="wrap_content"
         android:textColor="@color/black_333"
         android:textSize="12sp"
+        app:layout_constraintTop_toBottomOf="@+id/tvSinger"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tvSinger"
         tools:text="独唱、小合唱 Channel:666" />
-
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/btnClose"
         android:layout_width="wrap_content"
@@ -76,128 +74,128 @@
         android:id="@+id/btLoadMusic"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="@string/app_load_music"
         android:layout_margin="5dp"
         android:background="@color/button_color_selector"
-        android:text="@string/app_load_music"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/lyricsView" />
+        app:layout_constraintTop_toBottomOf="@+id/lyricsView"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btRemoveMusic"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="@string/app_remove_music"
         android:layout_margin="5dp"
         android:background="@color/button_color_selector"
-        android:text="@string/app_remove_music"
-        app:layout_constraintStart_toEndOf="@+id/btLoadMusic"
-        app:layout_constraintTop_toBottomOf="@+id/lyricsView" />
+        app:layout_constraintTop_toBottomOf="@+id/lyricsView"
+        app:layout_constraintStart_toEndOf="@+id/btLoadMusic" />
 
     <androidx.appcompat.widget.AppCompatTextView
         android:id="@+id/btLoadProgress"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
+        app:layout_constraintTop_toTopOf="@+id/btRemoveMusic"
         app:layout_constraintBottom_toBottomOf="@+id/btRemoveMusic"
-        app:layout_constraintStart_toEndOf="@+id/btRemoveMusic"
-        app:layout_constraintTop_toTopOf="@+id/btRemoveMusic" />
+        app:layout_constraintStart_toEndOf="@+id/btRemoveMusic" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btJoinChorus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="@string/app_join_chorus"
         android:layout_margin="5dp"
         android:background="@color/button_color_selector"
-        android:text="@string/app_join_chorus"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/btLoadMusic" />
+        app:layout_constraintTop_toBottomOf="@+id/btLoadMusic"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btLeaveChorus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="@string/app_leave_chorus"
         android:layout_margin="5dp"
         android:background="@color/button_color_selector"
-        android:text="@string/app_leave_chorus"
-        app:layout_constraintStart_toEndOf="@+id/btJoinChorus"
-        app:layout_constraintTop_toBottomOf="@+id/btLoadMusic" />
+        app:layout_constraintTop_toBottomOf="@+id/btLoadMusic"
+        app:layout_constraintStart_toEndOf="@+id/btJoinChorus" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btOriginal"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="@string/app_original"
         android:layout_margin="5dp"
         android:background="@color/button_color_selector"
-        android:text="@string/app_original"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/btJoinChorus" />
+        app:layout_constraintTop_toBottomOf="@+id/btJoinChorus"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btAcc"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="@string/app_acc"
         android:layout_margin="5dp"
         android:background="@color/button_color_selector"
-        android:text="@string/app_acc"
-        app:layout_constraintStart_toEndOf="@+id/btOriginal"
-        app:layout_constraintTop_toBottomOf="@+id/btJoinChorus" />
+        app:layout_constraintTop_toBottomOf="@+id/btJoinChorus"
+        app:layout_constraintStart_toEndOf="@+id/btOriginal" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btDaoChang"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="@string/app_daochang"
         android:layout_margin="5dp"
         android:background="@color/button_color_selector"
-        android:text="@string/app_daochang"
-        app:layout_constraintStart_toEndOf="@+id/btAcc"
-        app:layout_constraintTop_toBottomOf="@+id/btJoinChorus" />
+        app:layout_constraintTop_toBottomOf="@+id/btJoinChorus"
+        app:layout_constraintStart_toEndOf="@+id/btAcc" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btMicOn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="@string/app_mic_on"
         android:layout_margin="5dp"
         android:background="@color/button_color_selector"
-        android:text="@string/app_mic_on"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/btOriginal" />
+        app:layout_constraintTop_toBottomOf="@+id/btOriginal"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btMicOff"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="@string/app_mic_off"
         android:layout_margin="5dp"
         android:background="@color/button_color_selector"
-        android:text="@string/app_mic_off"
-        app:layout_constraintStart_toEndOf="@+id/btMicOn"
-        app:layout_constraintTop_toBottomOf="@+id/btOriginal" />
+        app:layout_constraintTop_toBottomOf="@+id/btOriginal"
+        app:layout_constraintStart_toEndOf="@+id/btMicOn" />
 
     <androidx.appcompat.widget.AppCompatTextView
         android:id="@+id/btMicStatus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
+        app:layout_constraintTop_toTopOf="@+id/btMicOff"
         app:layout_constraintBottom_toBottomOf="@+id/btMicOff"
-        app:layout_constraintStart_toEndOf="@+id/btMicOff"
-        app:layout_constraintTop_toTopOf="@+id/btMicOff" />
+        app:layout_constraintStart_toEndOf="@+id/btMicOff" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btPause"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="暂停"
         android:layout_margin="5dp"
         android:background="@color/button_color_selector"
-        android:text="暂停"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/btMicOn" />
+        app:layout_constraintTop_toBottomOf="@+id/btMicOn"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btPlay"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="播放"
         android:layout_margin="5dp"
         android:background="@color/button_color_selector"
-        android:text="播放"
-        app:layout_constraintStart_toEndOf="@+id/btPause"
-        app:layout_constraintTop_toBottomOf="@+id/btMicOn" />
+        app:layout_constraintTop_toBottomOf="@+id/btMicOn"
+        app:layout_constraintStart_toEndOf="@+id/btPause" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -32,7 +32,7 @@ class KTVViewController: UIViewController {
     let coSingerId = 2000
     let audienceId = 3000
     
-    let mccSongCode = 6625526603433040
+    let mccSongCode = 7162848698410430
     
     var lyricView: KTVLyricView!
     
@@ -211,7 +211,7 @@ class KTVViewController: UIViewController {
                 self.ktvApi.setLrcView(view: self.lyricView)
                 self.ktvApi.addEventHandler(ktvApiEventHandler: self)
                 
-                self.rtcKit.joinChannel(byToken: KeyCenter.Token, channelId: self.channelName, uid: UInt(self.userId), mediaOptions: self.mediaOptions())
+                self.rtcKit.joinChannel(byToken: rtcToken, channelId: self.channelName, uid: UInt(self.userId), mediaOptions: self.mediaOptions())
                 self.loadMusic()
             }
         }

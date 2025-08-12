@@ -11,6 +11,7 @@ public let kAppProjectValue = "agora_ent_demo"
 public let kAppOS = "appOs"
 public let kAppOSValue = "iOS"
 public let kAppVersion = "versionName"
+public let kAppAuthHeader = ""
 
 @objc
 class NetworkManager:NSObject {
@@ -44,8 +45,8 @@ class NetworkManager:NSObject {
             kAppOS: kAppOSValue,
             kAppVersion: "0.0.1"
         ]
-        if KeyCenter.Token?.count ?? 0 > 0  {
-            config.httpAdditionalHeaders?["Authorization"] = KeyCenter.Token
+        if kAppAuthHeader.count  > 0  {
+            config.httpAdditionalHeaders?["Authorization"] = kAppAuthHeader
         }
         config.timeoutIntervalForRequest = 30
         config.timeoutIntervalForResource = 30

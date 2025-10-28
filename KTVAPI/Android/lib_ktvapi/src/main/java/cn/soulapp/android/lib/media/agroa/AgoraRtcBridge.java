@@ -7,6 +7,7 @@ import static io.agora.mediaplayer.Constants.MediaPlayerState.PLAYER_STATE_PAUSE
 import static io.agora.mediaplayer.Constants.MediaPlayerState.PLAYER_STATE_PLAYBACK_ALL_LOOPS_COMPLETED;
 import static io.agora.mediaplayer.Constants.MediaPlayerState.PLAYER_STATE_PLAYBACK_COMPLETED;
 import static io.agora.mediaplayer.Constants.MediaPlayerState.PLAYER_STATE_PLAYING;
+import static io.agora.mediaplayer.Constants.MediaPlayerState.PLAYER_STATE_STOPPED;
 import static io.agora.rtc2.Constants.AUDIO_FILE_RECORDING_PLAYBACK;
 import android.os.Handler;
 import android.os.Looper;
@@ -72,7 +73,7 @@ public class AgoraRtcBridge implements IAgoraRtcBridge, IMediaPlayerObserver {
     private String audioUniId;
     private boolean isDelayLocalSendPosition = true;
     private long audioDuration = 0;//
-    private io.agora.mediaplayer.Constants.MediaPlayerState mMediaPlayerState;
+    private io.agora.mediaplayer.Constants.MediaPlayerState mMediaPlayerState = PLAYER_STATE_IDLE;
 
     // TODO Add variables
     private int audioDelay;
@@ -706,6 +707,8 @@ public class AgoraRtcBridge implements IAgoraRtcBridge, IMediaPlayerObserver {
                 syncProcessHelper.onStartPlay();
             }
             onStartPlay();
+        } else if (mediaPlayerState.equals(PLAYER_STATE_STOPPED) || mediaPlayerState.equals(PLAYER_STATE_OPEN_COMPLETED)) {
+            mHasOnStart = false;
         }
 
         //多线程NPE避免
